@@ -418,6 +418,29 @@ def mock_mca_employer_verify(employer_name: str) -> Dict[str, Any]:
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
+@app.post("/api/admin/reset-database")
+async def reset_database():
+    """Reset and re-seed the database with sample data"""
+    try:
+        print("🔄 Resetting database...")
+        
+        # Clear all collections
+        db.users.delete_many({})
+        db.properties.delete_many({})
+        db.property_interests.delete_many({})
+        
+        # Re-seed sample data
+        seed_sample_data()
+        
+        return {
+            "message": "Database reset and re-seeded successfully",
+            "users_count": db.users.count_documents({}),
+            "properties_count": db.properties.count_documents({}),
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to reset database: {str(e)}")
+
 @app.post("/api/auth/register")
 async def register_user(user_data: UserRegistration):
     # Check if user exists
