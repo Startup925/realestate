@@ -19,6 +19,209 @@ MONGO_URL = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 client = MongoClient(MONGO_URL)
 db = client.realestate_db
 
+# Initialize database collections with indexes
+def initialize_database():
+    """Initialize database collections and create indexes for better performance"""
+    try:
+        # Create indexes for users collection
+        db.users.create_index("email", unique=True)
+        db.users.create_index("user_id", unique=True)
+        db.users.create_index("user_type")
+        db.users.create_index("created_at")
+        
+        # Create indexes for properties collection
+        db.properties.create_index("property_id", unique=True)
+        db.properties.create_index("owner_id")
+        db.properties.create_index("status")
+        db.properties.create_index("location")
+        db.properties.create_index("rent")
+        db.properties.create_index("property_type")
+        
+        # Create indexes for interests collection
+        db.property_interests.create_index("interest_id", unique=True)
+        db.property_interests.create_index("property_id")
+        db.property_interests.create_index("tenant_id")
+        db.property_interests.create_index("owner_id")
+        db.property_interests.create_index("status")
+        
+        print("✅ Database indexes created successfully")
+        
+        # Seed sample data if collections are empty
+        seed_sample_data()
+        
+    except Exception as e:
+        print(f"⚠️ Database initialization error: {e}")
+
+def seed_sample_data():
+    """Seed the database with sample users and properties"""
+    try:
+        # Check if we already have data
+        if db.users.count_documents({}) > 0:
+            print("✅ Database already contains user data")
+            return
+        
+        print("🌱 Seeding sample data...")
+        
+        # Sample users for each persona
+        sample_users = [
+            {
+                "user_id": str(uuid.uuid4()),
+                "email": "john.owner@realestate.com",
+                "phone": "+91-9876543201",
+                "password": hash_password("password123"),
+                "user_type": "owner",
+                "full_name": "John Property Owner",
+                "profile_completed": True,
+                "kyc_completed": True,
+                "profile": {
+                    "full_name": "John Property Owner",
+                    "phone": "+91-9876543201",
+                    "address": "123 Owner Street, Mumbai, Maharashtra"
+                },
+                "created_at": datetime.now().isoformat()
+            },
+            {
+                "user_id": str(uuid.uuid4()),
+                "email": "sarah.dealer@realestate.com", 
+                "phone": "+91-9876543202",
+                "password": hash_password("password123"),
+                "user_type": "dealer",
+                "full_name": "Sarah Real Estate Dealer",
+                "profile_completed": True,
+                "kyc_completed": True,
+                "profile": {
+                    "full_name": "Sarah Real Estate Dealer",
+                    "phone": "+91-9876543202",
+                    "office_address": "456 Business Plaza, Pune, Maharashtra",
+                    "areas_served": ["Mumbai", "Pune", "Thane", "Navi Mumbai"]
+                },
+                "created_at": datetime.now().isoformat()
+            },
+            {
+                "user_id": str(uuid.uuid4()),
+                "email": "alex.tenant@realestate.com",
+                "phone": "+91-9876543203", 
+                "password": hash_password("password123"),
+                "user_type": "tenant",
+                "full_name": "Alex Tenant User",
+                "profile_completed": True,
+                "kyc_completed": True,
+                "profile": {
+                    "full_name": "Alex Tenant User",
+                    "phone": "+91-9876543203",
+                    "current_address": "789 Tenant Colony, Delhi",
+                    "permanent_address": "321 Home Town, Rajasthan"
+                },
+                "kyc_results": {
+                    "aadhaar_verification": {"status": "verified", "name": "Alex Tenant User"},
+                    "pan_verification": {"status": "verified", "name": "Alex Tenant User"},
+                    "face_match": {"status": "match", "match_score": 95.5},
+                    "employer_verification": {"company_found": True, "company_name": "Infosys Limited"}
+                },
+                "created_at": datetime.now().isoformat()
+            },
+            {
+                "user_id": str(uuid.uuid4()),
+                "email": "priya.tenant@realestate.com",
+                "phone": "+91-9876543204",
+                "password": hash_password("password123"),
+                "user_type": "tenant", 
+                "full_name": "Priya Tenant",
+                "profile_completed": True,
+                "kyc_completed": False,
+                "profile": {
+                    "full_name": "Priya Tenant",
+                    "phone": "+91-9876543204",
+                    "current_address": "101 Tech Park, Bangalore",
+                    "permanent_address": "567 Village Road, Kerala"
+                },
+                "created_at": datetime.now().isoformat()
+            }
+        ]
+        
+        # Insert sample users
+        db.users.insert_many(sample_users)
+        
+        # Get user IDs for property creation
+        owner_user = db.users.find_one({"user_type": "owner"})
+        dealer_user = db.users.find_one({"user_type": "dealer"})
+        
+        # Sample properties
+        sample_properties = [
+            {
+                "property_id": str(uuid.uuid4()),
+                "owner_id": owner_user["user_id"],
+                "title": "Luxury 3BHK Apartment in Mumbai",
+                "description": "Beautiful luxury apartment with modern amenities, great city views, and prime location near business district.",
+                "property_type": "apartment",
+                "size": "3 BHK",
+                "rent": 45000.0,
+                "location": "Bandra West, Mumbai, Maharashtra",
+                "latitude": 19.0596,
+                "longitude": 72.8295,
+                "amenities": ["Parking", "Gym", "Swimming Pool", "Security", "Elevator"],
+                "images": [],
+                "status": "active",
+                "created_at": datetime.now().isoformat()
+            },
+            {
+                "property_id": str(uuid.uuid4()),
+                "owner_id": owner_user["user_id"],
+                "title": "Cozy 2BHK House in Pune",
+                "description": "Well-maintained house with garden, perfect for small families. Close to schools and hospitals.",
+                "property_type": "house",
+                "size": "2 BHK",
+                "rent": 28000.0,
+                "location": "Koregaon Park, Pune, Maharashtra", 
+                "latitude": 18.5362,
+                "longitude": 73.8958,
+                "amenities": ["Garden", "Parking", "Wi-Fi Ready"],
+                "images": [],
+                "status": "active",
+                "created_at": datetime.now().isoformat()
+            },
+            {
+                "property_id": str(uuid.uuid4()),
+                "owner_id": dealer_user["user_id"],
+                "title": "Commercial Office Space",
+                "description": "Modern office space perfect for startups and small businesses. Fully furnished with high-speed internet.",
+                "property_type": "commercial",
+                "size": "1500 sq ft",
+                "rent": 75000.0,
+                "location": "Cyber City, Gurgaon, Haryana",
+                "latitude": 28.4595,
+                "longitude": 77.0266,
+                "amenities": ["Furnished", "High Speed Internet", "Conference Room", "Parking", "Security"],
+                "images": [],
+                "status": "active",
+                "created_at": datetime.now().isoformat()
+            },
+            {
+                "property_id": str(uuid.uuid4()),
+                "owner_id": dealer_user["user_id"],
+                "title": "Studio Apartment for Working Professionals",
+                "description": "Compact and efficient studio apartment ideal for working professionals. All modern amenities included.",
+                "property_type": "apartment",
+                "size": "1 BHK",
+                "rent": 22000.0,
+                "location": "Whitefield, Bangalore, Karnataka",
+                "latitude": 12.9698,
+                "longitude": 77.7500,
+                "amenities": ["Fully Furnished", "Wi-Fi", "Laundry", "Kitchen"],
+                "images": [],
+                "status": "active",
+                "created_at": datetime.now().isoformat()
+            }
+        ]
+        
+        # Insert sample properties
+        db.properties.insert_many(sample_properties)
+        
+        print(f"✅ Seeded {len(sample_users)} users and {len(sample_properties)} properties")
+        
+    except Exception as e:
+        print(f"⚠️ Error seeding sample data: {e}")
+
 app = FastAPI(title="RealEstate Platform API", version="1.0.0")
 
 # CORS middleware
