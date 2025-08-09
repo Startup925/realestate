@@ -251,6 +251,22 @@ app.add_middleware(
 
 security = HTTPBearer()
 
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    if not token.startswith("token_"):
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    parts = token.split("_")
+    if len(parts) < 3:
+        raise HTTPException(status_code=401, detail="Invalid token format")
+    
+    user_id = parts[1]
+    user = db.users.find_one({"user_id": user_id})
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    return user
+
 # Pydantic models
 class UserRegistration(BaseModel):
     email: EmailStr
