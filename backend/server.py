@@ -15,6 +15,16 @@ from pymongo import MongoClient
 # Environment variables
 MONGO_URL = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 
+# Helper functions
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(password: str, hashed: str) -> bool:
+    return hash_password(password) == hashed
+
+def generate_token(user_id: str) -> str:
+    return f"token_{user_id}_{int(time.time())}"
+
 # Database setup
 client = MongoClient(MONGO_URL)
 db = client.realestate_db
