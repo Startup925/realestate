@@ -90,6 +90,10 @@ function App() {
         fetchProperties();
       } else if (activeTab === 'interests') {
         fetchInterests();
+      } else if (activeTab === 'users') {
+        fetchAllUsers();
+        fetchSystemStats();
+        fetchRecentActivity();
       }
     }
   }, [currentUser, activeTab]);
