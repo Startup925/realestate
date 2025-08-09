@@ -30,10 +30,9 @@ class RealEstatePlatformTester:
             if method == 'GET':
                 response = requests.get(url, headers=headers)
             elif method == 'POST':
-                if endpoint == '/api/auth/login':
-                    # Special handling for login endpoint
-                    headers['Content-Type'] = 'application/x-www-form-urlencoded'
-                    response = requests.post(url, data=data, headers=headers)
+                if '/api/auth/login' in endpoint:
+                    # Login endpoint uses query parameters
+                    response = requests.post(url, headers=headers)
                 else:
                     response = requests.post(url, json=data, headers=headers)
             elif method == 'PUT':
