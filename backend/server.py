@@ -66,11 +66,17 @@ def seed_sample_data():
     """Seed the database with sample users and properties"""
     try:
         # Check if we already have data
-        if db.users.count_documents({}) > 0:
-            print("✅ Database already contains user data")
+        existing_users = db.users.count_documents({})
+        if existing_users > 0:
+            print(f"✅ Database already contains {existing_users} users")
             return
         
         print("🌱 Seeding sample data...")
+        
+        # Clear existing data first
+        db.users.delete_many({})
+        db.properties.delete_many({})
+        db.property_interests.delete_many({})
         
         # Sample users for each persona
         sample_users = [
