@@ -106,17 +106,14 @@ class RealEstatePlatformTester:
             print(f"❌ No user data for {user_type}")
             return False
             
-        login_data = {
-            "email": self.users[user_type]['data']['email'],
-            "password": self.users[user_type]['data']['password']
-        }
+        email = self.users[user_type]['data']['email']
+        password = self.users[user_type]['data']['password']
         
         success, response = self.run_test(
             f"Login {user_type.title()}",
             "POST",
-            "/api/auth/login",
-            200,
-            data=login_data
+            f"/api/auth/login?email={email}&password={password}",
+            200
         )
         
         if success and 'token' in response:
