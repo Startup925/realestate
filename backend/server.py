@@ -224,6 +224,12 @@ def seed_sample_data():
 
 app = FastAPI(title="RealEstate Platform API", version="1.0.0")
 
+# Initialize database on startup
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database and create sample data on startup"""
+    initialize_database()
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
