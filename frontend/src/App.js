@@ -24,6 +24,9 @@ function App() {
   const [dashboardStats, setDashboardStats] = useState({});
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [allUsers, setAllUsers] = useState([]);
+  const [systemStats, setSystemStats] = useState({});
+  const [recentActivity, setRecentActivity] = useState({});
 
   // Auth forms state
   const [authData, setAuthData] = useState({
