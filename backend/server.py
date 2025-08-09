@@ -346,7 +346,7 @@ async def get_properties(
         filters["rent"] = {"$gte": min_rent}
     if max_rent is not None:
         filters.setdefault("rent", {})["$lte"] = max_rent
-    if property_type:
+    if property_type and property_type != 'all':
         filters["property_type"] = property_type
     
     properties = list(db.properties.find(filters, {"_id": 0}))
