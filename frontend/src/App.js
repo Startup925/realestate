@@ -70,7 +70,7 @@ function App() {
     location: '',
     min_rent: '',
     max_rent: '',
-    property_type: ''
+    property_type: 'all'
   });
 
   useEffect(() => {
