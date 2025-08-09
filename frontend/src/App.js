@@ -138,6 +138,34 @@ function App() {
     }
   };
 
+  const fetchRecentActivity = async () => {
+    try {
+      const data = await apiCall('/api/admin/recent-activity');
+      setRecentActivity(data);
+    } catch (error) {
+      console.error('Failed to fetch recent activity:', error);
+    }
+  };
+
+  const fetchAllUsers = async () => {
+    try {
+      const data = await apiCall('/api/admin/users');
+      setAllUsers(data.users || []);
+      setSystemStats(prev => ({...prev, user_statistics: data.statistics}));
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
+
+  const fetchSystemStats = async () => {
+    try {
+      const data = await apiCall('/api/admin/system-stats');
+      setSystemStats(prev => ({...prev, ...data.system_stats}));
+    } catch (error) {
+      console.error('Failed to fetch system stats:', error);
+    }
+  };
+
   const fetchDashboardStats = async () => {
     try {
       const data = await apiCall('/api/dashboard/stats');
