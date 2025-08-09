@@ -406,32 +406,6 @@ def mock_mca_employer_verify(employer_name: str) -> Dict[str, Any]:
         "status": "active" if is_valid else "not_found"
     }
 
-# Helper functions
-def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
-
-def verify_password(password: str, hashed: str) -> bool:
-    return hash_password(password) == hashed
-
-def generate_token(user_id: str) -> str:
-    return f"token_{user_id}_{int(time.time())}"
-
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    token = credentials.credentials
-    if not token.startswith("token_"):
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
-    parts = token.split("_")
-    if len(parts) < 3:
-        raise HTTPException(status_code=401, detail="Invalid token format")
-    
-    user_id = parts[1]
-    user = db.users.find_one({"user_id": user_id})
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    
-    return user
-
 # API Endpoints
 
 @app.get("/api/health")
