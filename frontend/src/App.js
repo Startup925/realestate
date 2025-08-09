@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog';
 import { Alert, AlertDescription } from './components/ui/alert';
 import { Separator } from './components/ui/separator';
-import { MapPin, Home, Users, FileCheck, Star, Plus, Search, Phone, Mail, Calendar, CheckCircle, XCircle, Clock, Building, User } from 'lucide-react';
+import { MapPin, Home, Users, FileCheck, Star, Plus, Search, Phone, Mail, Calendar, CheckCircle, XCircle, Clock, Building, User, Heart } from 'lucide-react';
 import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
