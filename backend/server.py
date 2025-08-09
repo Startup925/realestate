@@ -315,6 +315,9 @@ async def create_property(property_data: Property, current_user = Depends(verify
     
     db.properties.insert_one(property_doc)
     
+    # Remove the MongoDB _id field before returning
+    property_doc.pop('_id', None)
+    
     return {
         "message": "Property created successfully",
         "property_id": property_id,
