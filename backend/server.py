@@ -722,6 +722,91 @@ async def get_dashboard_stats(current_user = Depends(verify_token)):
     
     return {"stats": stats}
 
+@app.get("/api/admin/users")
+async def get_all_users(current_user = Depends(verify_token)):
+    """Get all users in the system (for admin/demo purposes)"""
+    try:
+        users = list(db.users.find({}, {
+            "_id": 0,
+            "password": 0  # Exclude password from response
+        }).sort("created_at", -1))
+        
+        # Add summary statistics
+        user_stats = {
+            "total_users": len(users),
+            "owners": len([u for u in users if u["user_type"] == "owner"]),
+            "dealers": len([u for u in users if u["user_type"] == "dealer"]), 
+            "tenants": len([u for u in users if u["user_type"] == "tenant"]),
+            "profile_completed": len([u for u in users if u.get("profile_completed", False)]),
+            "kyc_completed": len([u for u in users if u.get("kyc_completed", False)])
+        }
+        
+        return {
+            "users": users,
+            "statistics": user_stats
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/admin/system-stats")
+async def get_system_stats(current_user = Depends(verify_token)):
+    """Get comprehensive system statistics"""
+    try:
+        stats = {
+            "users": {
+                "total": db.users.count_documents({}),
+                "owners": db.users.count_documents({"user_type": "owner"}),
+                "dealers": db.users.count_documents({"user_type": "dealer"}),
+                "tenants": db.users.count_documents({"user_type": "tenant"}),
+                "profile_completed": db.users.count_documents({"profile_completed": True}),
+                "kyc_completed": db.users.count_documents({"kyc_completed": True})
+            },
+            "properties": {
+                "total": db.properties.count_documents({}),
+                "active": db.properties.count_documents({"status": "active"}),
+                "apartments": db.properties.count_documents({"property_type": "apartment"}), 
+                "houses": db.properties.count_documents({"property_type": "house"}),
+                "commercial": db.properties.count_documents({"property_type": "commercial"})
+            },
+            "interests": {
+                "total": db.property_interests.count_documents({}),
+                "pending": db.property_interests.count_documents({"status": "pending"}),
+                "approved": db.property_interests.count_documents({"status": "approved"}),
+                "rejected": db.property_interests.count_documents({"status": "rejected"})
+            }
+        }
+        
+        return {"system_stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/admin/recent-activity")
+async def get_recent_activity(current_user = Depends(verify_token)):
+    """Get recent platform activity"""
+    try:
+        # Recent users (last 10)
+        recent_users = list(db.users.find({}, {
+            "_id": 0, "password": 0, "profile": 0
+        }).sort("created_at", -1).limit(10))
+        
+        # Recent properties (last 10)
+        recent_properties = list(db.properties.find({}, {
+            "_id": 0
+        }).sort("created_at", -1).limit(10))
+        
+        # Recent interests (last 10)
+        recent_interests = list(db.property_interests.find({}, {
+            "_id": 0
+        }).sort("created_at", -1).limit(10))
+        
+        return {
+            "recent_users": recent_users,
+            "recent_properties": recent_properties,
+            "recent_interests": recent_interests
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
