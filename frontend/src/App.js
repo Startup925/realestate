@@ -372,7 +372,7 @@ function App() {
                           onValueChange={(value) => setAuthData({...authData, user_type: value})}
                         >
                           <SelectTrigger>
-                            <SelectValue />
+                            <SelectValue placeholder="Select user type" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="tenant">Tenant</SelectItem>
