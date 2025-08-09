@@ -831,7 +831,7 @@ function App() {
                             onValueChange={(value) => setPropertyData({...propertyData, property_type: value})}
                           >
                             <SelectTrigger>
-                              <SelectValue />
+                              <SelectValue placeholder="Select property type" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="apartment">Apartment</SelectItem>
