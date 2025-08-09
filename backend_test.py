@@ -316,9 +316,8 @@ class RealEstatePlatformTester:
         success, response = self.run_test(
             f"Respond to Interest - Approve ({user_type.title()})",
             "PUT",
-            f"/api/interests/{interest_id}/respond",
+            f"/api/interests/{interest_id}/respond?response=approved",
             200,
-            data={"response": "approved"},
             user_type=user_type
         )
         return success
