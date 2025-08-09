@@ -1164,6 +1164,224 @@ function App() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="users" className="mt-6">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold">Platform Users</h2>
+                  <p className="text-gray-600">Comprehensive view of all registered users</p>
+                </div>
+                <Badge variant="secondary">
+                  Total: {allUsers.length} Users
+                </Badge>
+              </div>
+
+              {/* System Statistics Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-2">
+                      <Users className="h-8 w-8 text-blue-600" />
+                      <div>
+                        <p className="text-2xl font-bold">{systemStats.users?.total || 0}</p>
+                        <p className="text-sm text-gray-600">Total Users</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-2">
+                      <Building className="h-8 w-8 text-green-600" />
+                      <div>
+                        <p className="text-2xl font-bold">{systemStats.properties?.total || 0}</p>
+                        <p className="text-sm text-gray-600">Total Properties</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-2">
+                      <Heart className="h-8 w-8 text-red-600" />
+                      <div>
+                        <p className="text-2xl font-bold">{systemStats.interests?.total || 0}</p>
+                        <p className="text-sm text-gray-600">Total Interests</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="h-8 w-8 text-purple-600" />
+                      <div>
+                        <p className="text-2xl font-bold">{systemStats.users?.kyc_completed || 0}</p>
+                        <p className="text-sm text-gray-600">KYC Verified</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* User Type Distribution */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <div className="bg-blue-100 p-3 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+                      <Building className="h-8 w-8 text-blue-600" />
+                    </div>
+                    <p className="text-2xl font-bold">{systemStats.users?.owners || 0}</p>
+                    <p className="text-sm text-gray-600">Property Owners</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <div className="bg-green-100 p-3 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+                      <Users className="h-8 w-8 text-green-600" />
+                    </div>
+                    <p className="text-2xl font-bold">{systemStats.users?.dealers || 0}</p>
+                    <p className="text-sm text-gray-600">Dealers/Agents</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <div className="bg-purple-100 p-3 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+                      <User className="h-8 w-8 text-purple-600" />
+                    </div>
+                    <p className="text-2xl font-bold">{systemStats.users?.tenants || 0}</p>
+                    <p className="text-sm text-gray-600">Tenants</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* All Users Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>All Registered Users</CardTitle>
+                  <CardDescription>
+                    Complete list of all users with their profiles and status
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2">Name</th>
+                          <th className="text-left p-2">Email</th>
+                          <th className="text-left p-2">Type</th>
+                          <th className="text-left p-2">Phone</th>
+                          <th className="text-left p-2">Profile</th>
+                          <th className="text-left p-2">KYC</th>
+                          <th className="text-left p-2">Joined</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allUsers.map((user) => (
+                          <tr key={user.user_id} className="border-b hover:bg-gray-50">
+                            <td className="p-2 font-medium">{user.full_name}</td>
+                            <td className="p-2 text-sm text-gray-600">{user.email}</td>
+                            <td className="p-2">
+                              <Badge 
+                                variant="outline" 
+                                className={
+                                  user.user_type === 'owner' ? 'text-blue-600 border-blue-600' :
+                                  user.user_type === 'dealer' ? 'text-green-600 border-green-600' :
+                                  'text-purple-600 border-purple-600'
+                                }
+                              >
+                                {user.user_type}
+                              </Badge>
+                            </td>
+                            <td className="p-2 text-sm">{user.phone}</td>
+                            <td className="p-2">
+                              <Badge variant={user.profile_completed ? 'default' : 'secondary'}>
+                                {user.profile_completed ? 'Complete' : 'Incomplete'}
+                              </Badge>
+                            </td>
+                            <td className="p-2">
+                              {user.user_type === 'tenant' ? (
+                                <Badge variant={user.kyc_completed ? 'default' : 'destructive'}>
+                                  {user.kyc_completed ? 'Verified' : 'Pending'}
+                                </Badge>
+                              ) : (
+                                <span className="text-gray-400">N/A</span>
+                              )}
+                            </td>
+                            <td className="p-2 text-sm text-gray-500">
+                              {new Date(user.created_at).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {allUsers.length === 0 && (
+                    <div className="text-center py-8">
+                      <Users className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No Users Found</h3>
+                      <p className="text-gray-600">Users will appear here as they register.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Recent Activity */}
+              {recentActivity.recent_users && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent Activity</CardTitle>
+                    <CardDescription>Latest platform activity and new registrations</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div>
+                        <h4 className="font-semibold mb-3">Recent Users</h4>
+                        <div className="space-y-2">
+                          {recentActivity.recent_users?.slice(0, 5).map((user) => (
+                            <div key={user.user_id} className="flex items-center space-x-2 text-sm">
+                              <User className="h-4 w-4 text-gray-400" />
+                              <span className="font-medium">{user.full_name}</span>
+                              <Badge variant="outline" className="text-xs">{user.user_type}</Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-semibold mb-3">Recent Properties</h4>
+                        <div className="space-y-2">
+                          {recentActivity.recent_properties?.slice(0, 5).map((property) => (
+                            <div key={property.property_id} className="flex items-center space-x-2 text-sm">
+                              <Home className="h-4 w-4 text-gray-400" />
+                              <span className="font-medium truncate">{property.title}</span>
+                              <span className="text-green-600">₹{property.rent}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-semibold mb-3">Recent Interests</h4>
+                        <div className="space-y-2">
+                          {recentActivity.recent_interests?.slice(0, 5).map((interest) => (
+                            <div key={interest.interest_id} className="flex items-center space-x-2 text-sm">
+                              <Heart className="h-4 w-4 text-gray-400" />
+                              <span className="font-medium">Interest expressed</span>
+                              <Badge variant="outline" className="text-xs">{interest.status}</Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
 
