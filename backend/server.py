@@ -451,10 +451,15 @@ async def reset_database():
 
 @app.post("/api/auth/register")
 async def register_user(user_data: UserRegistration):
-    # Check if user exists
-    existing_user = db.users.find_one({"email": user_data.email})
-    if existing_user:
-        raise HTTPException(status_code=400, detail="User already exists")
+    # Check if user with email already exists
+    existing_email = db.users.find_one({"email": user_data.email})
+    if existing_email:
+        raise HTTPException(status_code=400, detail="User with this email already exists")
+    
+    # Check if user with phone already exists
+    existing_phone = db.users.find_one({"phone": user_data.phone})
+    if existing_phone:
+        raise HTTPException(status_code=400, detail="User with this phone number already exists")
     
     # Create user
     user_id = str(uuid.uuid4())
@@ -470,19 +475,22 @@ async def register_user(user_data: UserRegistration):
         "created_at": datetime.now().isoformat()
     }
     
-    db.users.insert_one(user_doc)
-    token = generate_token(user_id)
-    
-    return {
-        "message": "User registered successfully",
-        "token": token,
-        "user": {
-            "user_id": user_id,
-            "email": user_data.email,
-            "user_type": user_data.user_type,
-            "full_name": user_data.full_name
+    try:
+        db.users.insert_one(user_doc)
+        token = generate_token(user_id)
+        
+        return {
+            "message": "User registered successfully",
+            "token": token,
+            "user": {
+                "user_id": user_id,
+                "email": user_data.email,
+                "user_type": user_data.user_type,
+                "full_name": user_data.full_name
+            }
         }
-    }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Registration failed. Please try again.")
 
 @app.post("/api/auth/login")
 async def login_user(email: str = Form(...), password: str = Form(...)):
