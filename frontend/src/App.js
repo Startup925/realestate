@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import { Input } from './components/ui/input';
@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog';
 import { Alert, AlertDescription } from './components/ui/alert';
 import { Separator } from './components/ui/separator';
-import { MapPin, Home, Users, FileCheck, Star, Plus, Search, Phone, Mail, Calendar, CheckCircle, XCircle, Clock, Building, User, Heart } from 'lucide-react';
+import { MapPin, Home, Users, FileCheck, Star, Plus, Search, Phone, Mail, Calendar, CheckCircle, XCircle, Clock, Building, User, Heart, Camera, Trash2, UserCheck, Settings } from 'lucide-react';
 import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
@@ -29,6 +29,11 @@ function App() {
   const [recentActivity, setRecentActivity] = useState({});
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [capturedImage, setCapturedImage] = useState('');
 
   // Auth forms state
   const [authData, setAuthData] = useState({
@@ -97,7 +102,7 @@ function App() {
         fetchProperties();
       } else if (activeTab === 'interests') {
         fetchInterests();
-      } else if (activeTab === 'users') {
+      } else if (activeTab === 'users' && currentUser.user_type === 'admin') {
         fetchAllUsers();
         fetchSystemStats();
         fetchRecentActivity();
@@ -118,12 +123,20 @@ function App() {
       headers
     });
 
+    const text = await response.text();
+    
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error);
+      let errorMessage = 'An error occurred';
+      try {
+        const errorData = JSON.parse(text);
+        errorMessage = errorData.detail || errorMessage;
+      } catch {
+        errorMessage = text || `HTTP ${response.status}`;
+      }
+      throw new Error(errorMessage);
     }
 
-    return response.json();
+    return JSON.parse(text);
   };
 
   const fetchUserProfile = async () => {
@@ -137,7 +150,9 @@ function App() {
         areas_served: data.profile?.areas_served || [],
         office_address: data.profile?.office_address || '',
         current_address: data.profile?.current_address || '',
-        permanent_address: data.profile?.permanent_address || ''
+        permanent_address: data.profile?.permanent_address || '',
+        employment_type: data.profile?.employment_type || '',
+        monthly_income: data.profile?.monthly_income || ''
       });
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
@@ -186,10 +201,11 @@ function App() {
     try {
       const params = new URLSearchParams();
       Object.entries(searchFilters).forEach(([key, value]) => {
-        if (value) params.append(key, value);
+        if (value && value !== 'all') params.append(key, value);
       });
       
-      const data = await apiCall(`/api/properties?${params.toString()}`);
+      const endpoint = currentUser?.user_type === 'admin' ? '/api/admin/properties' : `/api/properties?${params.toString()}`;
+      const data = await apiCall(endpoint);
       setProperties(data.properties);
     } catch (error) {
       console.error('Failed to fetch properties:', error);
@@ -202,6 +218,90 @@ function App() {
       setInterests(data.interests);
     } catch (error) {
       console.error('Failed to fetch interests:', error);
+    }
+  };
+
+  const searchLocations = async (query) => {
+    if (!query || query.length < 2) {
+      setLocationSuggestions([]);
+      return;
+    }
+
+    try {
+      const data = await apiCall(`/api/google/places/autocomplete?query=${encodeURIComponent(query)}`);
+      setLocationSuggestions(data.predictions || []);
+    } catch (error) {
+      console.error('Failed to search locations:', error);
+      setLocationSuggestions([]);
+    }
+  };
+
+  const selectLocation = async (prediction) => {
+    try {
+      const data = await apiCall(`/api/google/places/details?place_id=${prediction.place_id}`);
+      const place = data.result;
+      
+      setPropertyData(prev => ({
+        ...prev,
+        location: place.formatted_address,
+        google_location: place
+      }));
+      
+      setLocationSuggestions([]);
+    } catch (error) {
+      console.error('Failed to get place details:', error);
+    }
+  };
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          width: { ideal: 640 }, 
+          height: { ideal: 480 },
+          facingMode: 'user' 
+        } 
+      });
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        setIsCameraActive(true);
+      }
+    } catch (error) {
+      console.error('Failed to start camera:', error);
+      setErrorMessage('Camera access denied. Please allow camera permissions.');
+    }
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+      
+      const imageData = canvas.toDataURL('image/jpeg');
+      setCapturedImage(imageData);
+      setKycData(prev => ({...prev, selfie_image: imageData}));
+      
+      // Stop camera
+      const stream = video.srcObject;
+      const tracks = stream.getTracks();
+      tracks.forEach(track => track.stop());
+      setIsCameraActive(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject;
+      const tracks = stream.getTracks();
+      tracks.forEach(track => track.stop());
+      setIsCameraActive(false);
     }
   };
 
@@ -250,6 +350,8 @@ function App() {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage('');
+    setSuccessMessage('');
 
     try {
       await apiCall('/api/user/profile', {
@@ -258,9 +360,9 @@ function App() {
       });
       
       await fetchUserProfile();
-      alert('Profile updated successfully!');
+      setSuccessMessage('Profile updated successfully!');
     } catch (error) {
-      alert('Failed to update profile: ' + error.message);
+      setErrorMessage('Failed to update profile: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -269,6 +371,8 @@ function App() {
   const handleCreateProperty = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage('');
+    setSuccessMessage('');
 
     try {
       const payload = {
@@ -286,17 +390,20 @@ function App() {
         title: '',
         description: '',
         property_type: 'apartment',
-        size: '',
+        bhk: '1',
+        area_size: '',
+        area_unit: 'sqft',
         rent: '',
         location: '',
+        google_location: null,
         amenities: [],
         images: []
       });
       
       fetchProperties();
-      alert('Property created successfully!');
+      setSuccessMessage('Property created successfully!');
     } catch (error) {
-      alert('Failed to create property: ' + error.message);
+      setErrorMessage('Failed to create property: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -305,20 +412,19 @@ function App() {
   const handleKYCVerification = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage('');
+    setSuccessMessage('');
 
     try {
       const data = await apiCall('/api/kyc/verify', {
         method: 'POST',
-        body: JSON.stringify({
-          ...kycData,
-          selfie_image: 'mock_base64_image_data'
-        })
+        body: JSON.stringify(kycData)
       });
 
       await fetchUserProfile();
-      alert('KYC verification completed! Status: ' + (data.kyc_status ? 'Verified' : 'Pending'));
+      setSuccessMessage('KYC verification completed! Status: ' + (data.kyc_status ? 'Verified' : 'Pending'));
     } catch (error) {
-      alert('KYC verification failed: ' + error.message);
+      setErrorMessage('KYC verification failed: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -326,6 +432,8 @@ function App() {
 
   const handleExpressInterest = async (propertyId, message = '') => {
     setLoading(true);
+    setErrorMessage('');
+    setSuccessMessage('');
 
     try {
       await apiCall(`/api/properties/${propertyId}/interest`, {
@@ -333,10 +441,10 @@ function App() {
         body: JSON.stringify({ property_id: propertyId, message })
       });
 
-      alert('Interest expressed successfully!');
+      setSuccessMessage('Interest expressed successfully!');
       fetchInterests();
     } catch (error) {
-      alert('Failed to express interest: ' + error.message);
+      setErrorMessage('Failed to express interest: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -344,6 +452,8 @@ function App() {
 
   const handleRespondToInterest = async (interestId, response) => {
     setLoading(true);
+    setErrorMessage('');
+    setSuccessMessage('');
 
     try {
       await apiCall(`/api/interests/${interestId}/respond`, {
@@ -351,10 +461,50 @@ function App() {
         body: JSON.stringify({ response })
       });
 
-      alert(`Interest ${response} successfully!`);
+      setSuccessMessage(`Interest ${response} successfully!`);
       fetchInterests();
     } catch (error) {
-      alert('Failed to respond to interest: ' + error.message);
+      setErrorMessage('Failed to respond to interest: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId, userName) => {
+    if (!window.confirm(`Are you sure you want to delete user "${userName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setLoading(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    try {
+      await apiCall(`/api/admin/users/${userId}`, { method: 'DELETE' });
+      setSuccessMessage(`User "${userName}" deleted successfully!`);
+      fetchAllUsers();
+    } catch (error) {
+      setErrorMessage('Failed to delete user: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteProperty = async (propertyId, propertyTitle) => {
+    if (!window.confirm(`Are you sure you want to delete property "${propertyTitle}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setLoading(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    try {
+      await apiCall(`/api/admin/properties/${propertyId}`, { method: 'DELETE' });
+      setSuccessMessage(`Property "${propertyTitle}" deleted successfully!`);
+      fetchProperties();
+    } catch (error) {
+      setErrorMessage('Failed to delete property: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -364,6 +514,8 @@ function App() {
     localStorage.removeItem('auth_token');
     setCurrentUser(null);
     setActiveTab('dashboard');
+    setErrorMessage('');
+    setSuccessMessage('');
   };
 
   if (!currentUser) {
@@ -399,6 +551,22 @@ function App() {
                 </div>
               </CardHeader>
               <CardContent>
+                {errorMessage && (
+                  <Alert className="mb-4 border-red-200 bg-red-50">
+                    <AlertDescription className="text-red-800">
+                      {errorMessage}
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                {successMessage && (
+                  <Alert className="mb-4 border-green-200 bg-green-50">
+                    <AlertDescription className="text-green-800">
+                      {successMessage}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <form onSubmit={handleAuth} className="space-y-4">
                   {authMode === 'register' && (
                     <>
@@ -465,6 +633,16 @@ function App() {
                     {loading ? 'Processing...' : (authMode === 'login' ? 'Login' : 'Register')}
                   </Button>
                 </form>
+
+                <div className="mt-6 text-sm text-gray-600">
+                  <p className="font-semibold mb-2">Demo Accounts (Password: password123):</p>
+                  <div className="space-y-1">
+                    <p>🏠 Owner: john.owner@realestate.com</p>
+                    <p>🏢 Dealer: sarah.dealer@realestate.com</p>
+                    <p>🏘️ Tenant: alex.tenant@realestate.com</p>
+                    <p>⚙️ Admin: admin@realestate.com (admin123)</p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -489,6 +667,18 @@ function App() {
           )}
         </div>
       </div>
+
+      {errorMessage && (
+        <Alert className="border-red-200 bg-red-50">
+          <AlertDescription className="text-red-800">{errorMessage}</AlertDescription>
+        </Alert>
+      )}
+      
+      {successMessage && (
+        <Alert className="border-green-200 bg-green-50">
+          <AlertDescription className="text-green-800">{successMessage}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {currentUser.user_type === 'owner' && (
@@ -637,9 +827,67 @@ function App() {
             </Card>
           </>
         )}
+
+        {currentUser.user_type === 'admin' && (
+          <>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2">
+                  <Users className="h-8 w-8 text-blue-600" />
+                  <div>
+                    <p className="text-2xl font-bold">{systemStats.users?.total || 0}</p>
+                    <p className="text-sm text-gray-600">Total Users</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2">
+                  <Building className="h-8 w-8 text-green-600" />
+                  <div>
+                    <p className="text-2xl font-bold">{systemStats.properties?.total || 0}</p>
+                    <p className="text-sm text-gray-600">Total Properties</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2">
+                  <Heart className="h-8 w-8 text-red-600" />
+                  <div>
+                    <p className="text-2xl font-bold">{systemStats.interests?.total || 0}</p>
+                    <p className="text-sm text-gray-600">Total Interests</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-8 w-8 text-purple-600" />
+                  <div>
+                    <p className="text-2xl font-bold">{systemStats.users?.kyc_completed || 0}</p>
+                    <p className="text-sm text-gray-600">KYC Verified</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
     </div>
   );
+
+  const tabConfig = {
+    tenant: ['dashboard', 'profile', 'properties', 'kyc', 'interests'],
+    owner: ['dashboard', 'profile', 'properties', 'interests'],
+    dealer: ['dashboard', 'profile', 'properties', 'interests'],
+    admin: ['dashboard', 'users', 'properties']
+  };
+
+  const currentTabs = tabConfig[currentUser?.user_type] || [];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -663,17 +911,15 @@ function App() {
 
       <div className="container mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="properties">Properties</TabsTrigger>
-            {currentUser.user_type === 'tenant' && (
-              <TabsTrigger value="kyc">KYC Verification</TabsTrigger>
-            )}
-            <TabsTrigger value="interests">
+          <TabsList className={`grid w-full grid-cols-${currentTabs.length}`}>
+            {currentTabs.includes('dashboard') && <TabsTrigger value="dashboard">Dashboard</TabsTrigger>}
+            {currentTabs.includes('profile') && <TabsTrigger value="profile">Profile</TabsTrigger>}
+            {currentTabs.includes('properties') && <TabsTrigger value="properties">Properties</TabsTrigger>}
+            {currentTabs.includes('kyc') && <TabsTrigger value="kyc">KYC Verification</TabsTrigger>}
+            {currentTabs.includes('interests') && <TabsTrigger value="interests">
               {currentUser.user_type === 'tenant' ? 'My Interests' : 'Interest Requests'}
-            </TabsTrigger>
-            <TabsTrigger value="users">All Users</TabsTrigger>
+            </TabsTrigger>}
+            {currentTabs.includes('users') && <TabsTrigger value="users">All Users</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="dashboard" className="mt-6">
@@ -689,6 +935,18 @@ function App() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {errorMessage && (
+                  <Alert className="mb-4 border-red-200 bg-red-50">
+                    <AlertDescription className="text-red-800">{errorMessage}</AlertDescription>
+                  </Alert>
+                )}
+                
+                {successMessage && (
+                  <Alert className="mb-4 border-green-200 bg-green-50">
+                    <AlertDescription className="text-green-800">{successMessage}</AlertDescription>
+                  </Alert>
+                )}
+
                 <form onSubmit={handleUpdateProfile} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -753,6 +1011,44 @@ function App() {
                           onChange={(e) => setProfileData({...profileData, permanent_address: e.target.value})}
                         />
                       </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="employment_type">Employment Type</Label>
+                          <Select 
+                            value={profileData.employment_type} 
+                            onValueChange={(value) => setProfileData({...profileData, employment_type: value})}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select employment type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="salaried">Salaried</SelectItem>
+                              <SelectItem value="self_employed">Self Employed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="monthly_income">Monthly Income (Net)</Label>
+                          <Select 
+                            value={profileData.monthly_income} 
+                            onValueChange={(value) => setProfileData({...profileData, monthly_income: value})}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select income range" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="0-15000">₹0 - ₹15,000</SelectItem>
+                              <SelectItem value="15000-30000">₹15,000 - ₹30,000</SelectItem>
+                              <SelectItem value="30000-75000">₹30,000 - ₹75,000</SelectItem>
+                              <SelectItem value="75000-100000">₹75,000 - ₹1,00,000</SelectItem>
+                              <SelectItem value="100000-150000">₹1,00,000 - ₹1,50,000</SelectItem>
+                              <SelectItem value="150000-200000">₹1,50,000 - ₹2,00,000</SelectItem>
+                              <SelectItem value="200000-300000">₹2,00,000 - ₹3,00,000</SelectItem>
+                              <SelectItem value="300000+">₹3,00,000+</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
                     </>
                   )}
 
@@ -777,66 +1073,79 @@ function App() {
 
           <TabsContent value="properties" className="mt-6">
             <div className="space-y-6">
+              {errorMessage && (
+                <Alert className="border-red-200 bg-red-50">
+                  <AlertDescription className="text-red-800">{errorMessage}</AlertDescription>
+                </Alert>
+              )}
+              
+              {successMessage && (
+                <Alert className="border-green-200 bg-green-50">
+                  <AlertDescription className="text-green-800">{successMessage}</AlertDescription>
+                </Alert>
+              )}
+
               {/* Search/Filter Bar */}
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex flex-wrap gap-4 items-end">
-                    <div className="flex-1 min-w-[200px]">
-                      <Label htmlFor="search_location">Location</Label>
-                      <Input
-                        id="search_location"
-                        placeholder="Search by location..."
-                        value={searchFilters.location}
-                        onChange={(e) => setSearchFilters({...searchFilters, location: e.target.value})}
-                      />
+              {currentUser.user_type !== 'admin' && (
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex flex-wrap gap-4 items-end">
+                      <div className="flex-1 min-w-[200px]">
+                        <Label htmlFor="search_location">Location</Label>
+                        <Input
+                          id="search_location"
+                          placeholder="Search by location..."
+                          value={searchFilters.location}
+                          onChange={(e) => setSearchFilters({...searchFilters, location: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="min_rent">Min Rent</Label>
+                        <Input
+                          id="min_rent"
+                          type="number"
+                          placeholder="Min"
+                          value={searchFilters.min_rent}
+                          onChange={(e) => setSearchFilters({...searchFilters, min_rent: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="max_rent">Max Rent</Label>
+                        <Input
+                          id="max_rent"
+                          type="number"
+                          placeholder="Max"
+                          value={searchFilters.max_rent}
+                          onChange={(e) => setSearchFilters({...searchFilters, max_rent: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="property_type">Type</Label>
+                        <Select 
+                          value={searchFilters.property_type} 
+                          onValueChange={(value) => setSearchFilters({...searchFilters, property_type: value})}
+                        >
+                          <SelectTrigger className="w-[130px]">
+                            <SelectValue placeholder="All Types" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Types</SelectItem>
+                            <SelectItem value="apartment">Apartment</SelectItem>
+                            <SelectItem value="house">House</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button onClick={fetchProperties}>
+                        <Search className="h-4 w-4 mr-2" />
+                        Search
+                      </Button>
                     </div>
-                    <div>
-                      <Label htmlFor="min_rent">Min Rent</Label>
-                      <Input
-                        id="min_rent"
-                        type="number"
-                        placeholder="Min"
-                        value={searchFilters.min_rent}
-                        onChange={(e) => setSearchFilters({...searchFilters, min_rent: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="max_rent">Max Rent</Label>
-                      <Input
-                        id="max_rent"
-                        type="number"
-                        placeholder="Max"
-                        value={searchFilters.max_rent}
-                        onChange={(e) => setSearchFilters({...searchFilters, max_rent: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="property_type">Type</Label>
-                      <Select 
-                        value={searchFilters.property_type} 
-                        onValueChange={(value) => setSearchFilters({...searchFilters, property_type: value})}
-                      >
-                        <SelectTrigger className="w-[130px]">
-                          <SelectValue placeholder="All Types" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Types</SelectItem>
-                          <SelectItem value="apartment">Apartment</SelectItem>
-                          <SelectItem value="house">House</SelectItem>
-                          <SelectItem value="commercial">Commercial</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button onClick={fetchProperties}>
-                      <Search className="h-4 w-4 mr-2" />
-                      Search
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Add Property Button for Owners/Dealers */}
-              {currentUser.user_type !== 'tenant' && (
+              {currentUser.user_type !== 'tenant' && currentUser.user_type !== 'admin' && (
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button>
@@ -844,33 +1153,33 @@ function App() {
                       Add New Property
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
+                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Add New Property</DialogTitle>
                       <DialogDescription>
-                        Create a new property listing
+                        Create a new property listing with enhanced details
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleCreateProperty} className="space-y-4">
-                      <div>
-                        <Label htmlFor="title">Property Title</Label>
-                        <Input
-                          id="title"
-                          value={propertyData.title}
-                          onChange={(e) => setPropertyData({...propertyData, title: e.target.value})}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="description">Description</Label>
-                        <Textarea
-                          id="description"
-                          value={propertyData.description}
-                          onChange={(e) => setPropertyData({...propertyData, description: e.target.value})}
-                          required
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="md:col-span-2">
+                          <Label htmlFor="title">Property Title</Label>
+                          <Input
+                            id="title"
+                            value={propertyData.title}
+                            onChange={(e) => setPropertyData({...propertyData, title: e.target.value})}
+                            required
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <Label htmlFor="description">Description</Label>
+                          <Textarea
+                            id="description"
+                            value={propertyData.description}
+                            onChange={(e) => setPropertyData({...propertyData, description: e.target.value})}
+                            required
+                          />
+                        </div>
                         <div>
                           <Label htmlFor="property_type">Property Type</Label>
                           <Select 
@@ -883,22 +1192,54 @@ function App() {
                             <SelectContent>
                               <SelectItem value="apartment">Apartment</SelectItem>
                               <SelectItem value="house">House</SelectItem>
-                              <SelectItem value="commercial">Commercial</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                         <div>
-                          <Label htmlFor="size">Size</Label>
+                          <Label htmlFor="bhk">BHK</Label>
+                          <Select 
+                            value={propertyData.bhk} 
+                            onValueChange={(value) => setPropertyData({...propertyData, bhk: value})}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select BHK" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">1 BHK</SelectItem>
+                              <SelectItem value="2">2 BHK</SelectItem>
+                              <SelectItem value="3">3 BHK</SelectItem>
+                              <SelectItem value="4">4 BHK</SelectItem>
+                              <SelectItem value="5">5 BHK</SelectItem>
+                              <SelectItem value="6">6 BHK</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="area_size">Area Size</Label>
                           <Input
-                            id="size"
-                            placeholder="e.g., 2 BHK, 1000 sq ft"
-                            value={propertyData.size}
-                            onChange={(e) => setPropertyData({...propertyData, size: e.target.value})}
+                            id="area_size"
+                            type="number"
+                            placeholder="e.g., 1200"
+                            value={propertyData.area_size}
+                            onChange={(e) => setPropertyData({...propertyData, area_size: e.target.value})}
                             required
                           />
                         </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="area_unit">Area Unit</Label>
+                          <Select 
+                            value={propertyData.area_unit} 
+                            onValueChange={(value) => setPropertyData({...propertyData, area_unit: value})}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select unit" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="sqft">Square Feet</SelectItem>
+                              <SelectItem value="sqyard">Square Yard</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                         <div>
                           <Label htmlFor="rent">Monthly Rent (₹)</Label>
                           <Input
@@ -909,16 +1250,39 @@ function App() {
                             required
                           />
                         </div>
-                        <div>
-                          <Label htmlFor="location">Location</Label>
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="location">Location</Label>
+                        <div className="relative">
                           <Input
                             id="location"
                             value={propertyData.location}
-                            onChange={(e) => setPropertyData({...propertyData, location: e.target.value})}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setPropertyData({...propertyData, location: value});
+                              searchLocations(value);
+                            }}
+                            placeholder="Search for location..."
                             required
                           />
+                          {locationSuggestions.length > 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
+                              {locationSuggestions.map((suggestion) => (
+                                <div
+                                  key={suggestion.place_id}
+                                  className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
+                                  onClick={() => selectLocation(suggestion)}
+                                >
+                                  <div className="font-medium">{suggestion.structured_formatting.main_text}</div>
+                                  <div className="text-sm text-gray-600">{suggestion.structured_formatting.secondary_text}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
+                      
                       <div>
                         <Label htmlFor="amenities">Amenities (comma separated)</Label>
                         <Input
@@ -958,10 +1322,10 @@ function App() {
                         <div className="space-y-1 text-sm text-gray-500">
                           <div className="flex items-center">
                             <MapPin className="h-4 w-4 mr-1" />
-                            {property.location}
+                            <span className="truncate">{property.location}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span>{property.size}</span>
+                            <span>{property.bhk} BHK • {property.area_size} {property.area_unit}</span>
                             <span className="font-semibold text-green-600">₹{property.rent}/month</span>
                           </div>
                         </div>
@@ -979,24 +1343,42 @@ function App() {
                             )}
                           </div>
                         )}
-                        <div className="mt-4 flex space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => setSelectedProperty(property)}
-                          >
-                            View Details
-                          </Button>
-                          {currentUser.user_type === 'tenant' && (
+                        <div className="mt-4 flex justify-between items-center">
+                          <div className="flex space-x-2">
                             <Button 
+                              variant="outline" 
                               size="sm" 
-                              onClick={() => handleExpressInterest(property.property_id)}
+                              onClick={() => setSelectedProperty(property)}
+                            >
+                              View Details
+                            </Button>
+                            {currentUser.user_type === 'tenant' && (
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleExpressInterest(property.property_id)}
+                                disabled={loading}
+                              >
+                                Express Interest
+                              </Button>
+                            )}
+                          </div>
+                          {currentUser.user_type === 'admin' && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteProperty(property.property_id, property.title)}
                               disabled={loading}
                             >
-                              Express Interest
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
                         </div>
+                        {currentUser.user_type === 'admin' && property.owner_info && (
+                          <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
+                            <p><strong>Owner:</strong> {property.owner_info.name}</p>
+                            <p><strong>Type:</strong> {property.owner_info.user_type}</p>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -1011,6 +1393,8 @@ function App() {
                     <p className="text-gray-600">
                       {currentUser.user_type === 'tenant' 
                         ? 'Try adjusting your search filters or check back later for new listings.'
+                        : currentUser.user_type === 'admin'
+                        ? 'No properties have been created yet.'
                         : 'Start by adding your first property listing.'
                       }
                     </p>
@@ -1030,6 +1414,18 @@ function App() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {errorMessage && (
+                    <Alert className="mb-4 border-red-200 bg-red-50">
+                      <AlertDescription className="text-red-800">{errorMessage}</AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  {successMessage && (
+                    <Alert className="mb-4 border-green-200 bg-green-50">
+                      <AlertDescription className="text-green-800">{successMessage}</AlertDescription>
+                    </Alert>
+                  )}
+
                   {currentUser.kyc_completed ? (
                     <Alert>
                       <CheckCircle className="h-4 w-4" />
@@ -1071,13 +1467,58 @@ function App() {
                         />
                       </div>
                       <div>
-                        <Label>Selfie Upload</Label>
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                          <User className="h-12 w-12 mx-auto text-gray-400 mb-2" />
-                          <p className="text-gray-600">Click to upload your selfie</p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            This will be used for face matching with your ID documents
-                          </p>
+                        <Label>Live Camera Selfie</Label>
+                        <div className="space-y-4">
+                          {!isCameraActive && !capturedImage && (
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                              <Camera className="h-12 w-12 mx-auto text-gray-400 mb-2" />
+                              <p className="text-gray-600 mb-4">Take a live selfie for identity verification</p>
+                              <Button type="button" onClick={startCamera}>
+                                <Camera className="h-4 w-4 mr-2" />
+                                Start Camera
+                              </Button>
+                            </div>
+                          )}
+                          
+                          {isCameraActive && (
+                            <div className="text-center space-y-4">
+                              <video
+                                ref={videoRef}
+                                autoPlay
+                                playsInline
+                                className="w-64 h-48 mx-auto border rounded-lg"
+                              />
+                              <div className="flex justify-center space-x-2">
+                                <Button type="button" onClick={capturePhoto}>
+                                  <Camera className="h-4 w-4 mr-2" />
+                                  Capture
+                                </Button>
+                                <Button type="button" variant="outline" onClick={stopCamera}>
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {capturedImage && (
+                            <div className="text-center space-y-4">
+                              <img
+                                src={capturedImage}
+                                alt="Captured selfie"
+                                className="w-64 h-48 mx-auto border rounded-lg"
+                              />
+                              <div className="flex justify-center space-x-2">
+                                <Button type="button" variant="outline" onClick={() => {
+                                  setCapturedImage('');
+                                  setKycData(prev => ({...prev, selfie_image: ''}));
+                                }}>
+                                  Retake
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                          
+                          <canvas ref={canvasRef} className="hidden" />
                         </div>
                       </div>
                       <Alert>
@@ -1086,7 +1527,7 @@ function App() {
                           This is a mock KYC process. In production, this would integrate with Karza APIs for Aadhaar/PAN verification, face matching, DigiLocker for document verification, and MCA for employer verification.
                         </AlertDescription>
                       </Alert>
-                      <Button type="submit" disabled={loading}>
+                      <Button type="submit" disabled={loading || !capturedImage}>
                         {loading ? 'Verifying...' : 'Submit for Verification'}
                       </Button>
                     </form>
@@ -1110,6 +1551,18 @@ function App() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {errorMessage && (
+                  <Alert className="mb-4 border-red-200 bg-red-50">
+                    <AlertDescription className="text-red-800">{errorMessage}</AlertDescription>
+                  </Alert>
+                )}
+                
+                {successMessage && (
+                  <Alert className="mb-4 border-green-200 bg-green-50">
+                    <AlertDescription className="text-green-800">{successMessage}</AlertDescription>
+                  </Alert>
+                )}
+
                 {interests.length === 0 ? (
                   <div className="text-center py-8">
                     <Users className="h-16 w-16 mx-auto text-gray-400 mb-4" />
@@ -1176,223 +1629,208 @@ function App() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="users" className="mt-6">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold">Platform Users</h2>
-                  <p className="text-gray-600">Comprehensive view of all registered users</p>
-                </div>
-                <Badge variant="secondary">
-                  Total: {allUsers.length} Users
-                </Badge>
-              </div>
-
-              {/* System Statistics Overview */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-2">
-                      <Users className="h-8 w-8 text-blue-600" />
-                      <div>
-                        <p className="text-2xl font-bold">{systemStats.users?.total || 0}</p>
-                        <p className="text-sm text-gray-600">Total Users</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-2">
-                      <Building className="h-8 w-8 text-green-600" />
-                      <div>
-                        <p className="text-2xl font-bold">{systemStats.properties?.total || 0}</p>
-                        <p className="text-sm text-gray-600">Total Properties</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-2">
-                      <Heart className="h-8 w-8 text-red-600" />
-                      <div>
-                        <p className="text-2xl font-bold">{systemStats.interests?.total || 0}</p>
-                        <p className="text-sm text-gray-600">Total Interests</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-8 w-8 text-purple-600" />
-                      <div>
-                        <p className="text-2xl font-bold">{systemStats.users?.kyc_completed || 0}</p>
-                        <p className="text-sm text-gray-600">KYC Verified</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* User Type Distribution */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                  <CardContent className="p-6 text-center">
-                    <div className="bg-blue-100 p-3 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
-                      <Building className="h-8 w-8 text-blue-600" />
-                    </div>
-                    <p className="text-2xl font-bold">{systemStats.users?.owners || 0}</p>
-                    <p className="text-sm text-gray-600">Property Owners</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6 text-center">
-                    <div className="bg-green-100 p-3 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
-                      <Users className="h-8 w-8 text-green-600" />
-                    </div>
-                    <p className="text-2xl font-bold">{systemStats.users?.dealers || 0}</p>
-                    <p className="text-sm text-gray-600">Dealers/Agents</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6 text-center">
-                    <div className="bg-purple-100 p-3 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
-                      <User className="h-8 w-8 text-purple-600" />
-                    </div>
-                    <p className="text-2xl font-bold">{systemStats.users?.tenants || 0}</p>
-                    <p className="text-sm text-gray-600">Tenants</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* All Users Table */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>All Registered Users</CardTitle>
-                  <CardDescription>
-                    Complete list of all users with their profiles and status
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2">Name</th>
-                          <th className="text-left p-2">Email</th>
-                          <th className="text-left p-2">Type</th>
-                          <th className="text-left p-2">Phone</th>
-                          <th className="text-left p-2">Profile</th>
-                          <th className="text-left p-2">KYC</th>
-                          <th className="text-left p-2">Joined</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {allUsers.map((user) => (
-                          <tr key={user.user_id} className="border-b hover:bg-gray-50">
-                            <td className="p-2 font-medium">{user.full_name}</td>
-                            <td className="p-2 text-sm text-gray-600">{user.email}</td>
-                            <td className="p-2">
-                              <Badge 
-                                variant="outline" 
-                                className={
-                                  user.user_type === 'owner' ? 'text-blue-600 border-blue-600' :
-                                  user.user_type === 'dealer' ? 'text-green-600 border-green-600' :
-                                  'text-purple-600 border-purple-600'
-                                }
-                              >
-                                {user.user_type}
-                              </Badge>
-                            </td>
-                            <td className="p-2 text-sm">{user.phone}</td>
-                            <td className="p-2">
-                              <Badge variant={user.profile_completed ? 'default' : 'secondary'}>
-                                {user.profile_completed ? 'Complete' : 'Incomplete'}
-                              </Badge>
-                            </td>
-                            <td className="p-2">
-                              {user.user_type === 'tenant' ? (
-                                <Badge variant={user.kyc_completed ? 'default' : 'destructive'}>
-                                  {user.kyc_completed ? 'Verified' : 'Pending'}
-                                </Badge>
-                              ) : (
-                                <span className="text-gray-400">N/A</span>
-                              )}
-                            </td>
-                            <td className="p-2 text-sm text-gray-500">
-                              {new Date(user.created_at).toLocaleDateString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+          {currentUser.user_type === 'admin' && (
+            <TabsContent value="users" className="mt-6">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold">Platform Users Management</h2>
+                    <p className="text-gray-600">Comprehensive admin view of all registered users</p>
                   </div>
-                  
-                  {allUsers.length === 0 && (
-                    <div className="text-center py-8">
-                      <Users className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">No Users Found</h3>
-                      <p className="text-gray-600">Users will appear here as they register.</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                  <Badge variant="secondary">
+                    Total: {allUsers.length} Users
+                  </Badge>
+                </div>
 
-              {/* Recent Activity */}
-              {recentActivity.recent_users && (
+                {errorMessage && (
+                  <Alert className="border-red-200 bg-red-50">
+                    <AlertDescription className="text-red-800">{errorMessage}</AlertDescription>
+                  </Alert>
+                )}
+                
+                {successMessage && (
+                  <Alert className="border-green-200 bg-green-50">
+                    <AlertDescription className="text-green-800">{successMessage}</AlertDescription>
+                  </Alert>
+                )}
+
+                {/* System Statistics Overview */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center space-x-2">
+                        <Users className="h-8 w-8 text-blue-600" />
+                        <div>
+                          <p className="text-2xl font-bold">{systemStats.users?.total || 0}</p>
+                          <p className="text-sm text-gray-600">Total Users</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center space-x-2">
+                        <Building className="h-8 w-8 text-green-600" />
+                        <div>
+                          <p className="text-2xl font-bold">{systemStats.properties?.total || 0}</p>
+                          <p className="text-sm text-gray-600">Total Properties</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center space-x-2">
+                        <Heart className="h-8 w-8 text-red-600" />
+                        <div>
+                          <p className="text-2xl font-bold">{systemStats.interests?.total || 0}</p>
+                          <p className="text-sm text-gray-600">Total Interests</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle className="h-8 w-8 text-purple-600" />
+                        <div>
+                          <p className="text-2xl font-bold">{systemStats.users?.kyc_completed || 0}</p>
+                          <p className="text-sm text-gray-600">KYC Verified</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* User Type Distribution */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="p-6 text-center">
+                      <div className="bg-gray-100 p-3 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+                        <Settings className="h-8 w-8 text-gray-600" />
+                      </div>
+                      <p className="text-2xl font-bold">{systemStats.users?.admins || 0}</p>
+                      <p className="text-sm text-gray-600">Administrators</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-6 text-center">
+                      <div className="bg-blue-100 p-3 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+                        <Building className="h-8 w-8 text-blue-600" />
+                      </div>
+                      <p className="text-2xl font-bold">{systemStats.users?.owners || 0}</p>
+                      <p className="text-sm text-gray-600">Property Owners</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-6 text-center">
+                      <div className="bg-green-100 p-3 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+                        <UserCheck className="h-8 w-8 text-green-600" />
+                      </div>
+                      <p className="text-2xl font-bold">{systemStats.users?.dealers || 0}</p>
+                      <p className="text-sm text-gray-600">Dealers/Agents</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-6 text-center">
+                      <div className="bg-purple-100 p-3 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+                        <User className="h-8 w-8 text-purple-600" />
+                      </div>
+                      <p className="text-2xl font-bold">{systemStats.users?.tenants || 0}</p>
+                      <p className="text-sm text-gray-600">Tenants</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* All Users Table */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Recent Activity</CardTitle>
-                    <CardDescription>Latest platform activity and new registrations</CardDescription>
+                    <CardTitle>All Registered Users</CardTitle>
+                    <CardDescription>
+                      Complete list of all users with management options
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div>
-                        <h4 className="font-semibold mb-3">Recent Users</h4>
-                        <div className="space-y-2">
-                          {recentActivity.recent_users?.slice(0, 5).map((user) => (
-                            <div key={user.user_id} className="flex items-center space-x-2 text-sm">
-                              <User className="h-4 w-4 text-gray-400" />
-                              <span className="font-medium">{user.full_name}</span>
-                              <Badge variant="outline" className="text-xs">{user.user_type}</Badge>
-                            </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-2">Name</th>
+                            <th className="text-left p-2">Email</th>
+                            <th className="text-left p-2">Type</th>
+                            <th className="text-left p-2">Phone</th>
+                            <th className="text-left p-2">Profile</th>
+                            <th className="text-left p-2">KYC</th>
+                            <th className="text-left p-2">Joined</th>
+                            <th className="text-left p-2">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {allUsers.map((user) => (
+                            <tr key={user.user_id} className="border-b hover:bg-gray-50">
+                              <td className="p-2 font-medium">{user.full_name}</td>
+                              <td className="p-2 text-sm text-gray-600">{user.email}</td>
+                              <td className="p-2">
+                                <Badge 
+                                  variant="outline" 
+                                  className={
+                                    user.user_type === 'admin' ? 'text-gray-600 border-gray-600' :
+                                    user.user_type === 'owner' ? 'text-blue-600 border-blue-600' :
+                                    user.user_type === 'dealer' ? 'text-green-600 border-green-600' :
+                                    'text-purple-600 border-purple-600'
+                                  }
+                                >
+                                  {user.user_type}
+                                </Badge>
+                              </td>
+                              <td className="p-2 text-sm">{user.phone}</td>
+                              <td className="p-2">
+                                <Badge variant={user.profile_completed ? 'default' : 'secondary'}>
+                                  {user.profile_completed ? 'Complete' : 'Incomplete'}
+                                </Badge>
+                              </td>
+                              <td className="p-2">
+                                {user.user_type === 'tenant' ? (
+                                  <Badge variant={user.kyc_completed ? 'default' : 'destructive'}>
+                                    {user.kyc_completed ? 'Verified' : 'Pending'}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-gray-400">N/A</span>
+                                )}
+                              </td>
+                              <td className="p-2 text-sm text-gray-500">
+                                {new Date(user.created_at).toLocaleDateString()}
+                              </td>
+                              <td className="p-2">
+                                {user.user_type !== 'admin' && (
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => handleDeleteUser(user.user_id, user.full_name)}
+                                    disabled={loading}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </td>
+                            </tr>
                           ))}
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-semibold mb-3">Recent Properties</h4>
-                        <div className="space-y-2">
-                          {recentActivity.recent_properties?.slice(0, 5).map((property) => (
-                            <div key={property.property_id} className="flex items-center space-x-2 text-sm">
-                              <Home className="h-4 w-4 text-gray-400" />
-                              <span className="font-medium truncate">{property.title}</span>
-                              <span className="text-green-600">₹{property.rent}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-semibold mb-3">Recent Interests</h4>
-                        <div className="space-y-2">
-                          {recentActivity.recent_interests?.slice(0, 5).map((interest) => (
-                            <div key={interest.interest_id} className="flex items-center space-x-2 text-sm">
-                              <Heart className="h-4 w-4 text-gray-400" />
-                              <span className="font-medium">Interest expressed</span>
-                              <Badge variant="outline" className="text-xs">{interest.status}</Badge>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                        </tbody>
+                      </table>
                     </div>
+                    
+                    {allUsers.length === 0 && (
+                      <div className="text-center py-8">
+                        <Users className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">No Users Found</h3>
+                        <p className="text-gray-600">Users will appear here as they register.</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
-              )}
-            </div>
-          </TabsContent>
+              </div>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
@@ -1421,7 +1859,7 @@ function App() {
                 </div>
                 <div>
                   <h4 className="font-semibold mb-1">Size</h4>
-                  <p className="text-gray-700">{selectedProperty.size}</p>
+                  <p className="text-gray-700">{selectedProperty.bhk} BHK • {selectedProperty.area_size} {selectedProperty.area_unit}</p>
                 </div>
               </div>
               {selectedProperty.amenities && selectedProperty.amenities.length > 0 && (
