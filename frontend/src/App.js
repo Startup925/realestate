@@ -635,16 +635,6 @@ function App() {
                     {loading ? 'Processing...' : (authMode === 'login' ? 'Login' : 'Register')}
                   </Button>
                 </form>
-
-                <div className="mt-6 text-sm text-gray-600">
-                  <p className="font-semibold mb-2">Demo Accounts (Password: password123):</p>
-                  <div className="space-y-1">
-                    <p>🏠 Owner: john.owner@realestate.com</p>
-                    <p>🏢 Dealer: sarah.dealer@realestate.com</p>
-                    <p>🏘️ Tenant: alex.tenant@realestate.com</p>
-                    <p>⚙️ Admin: admin@realestate.com (admin123)</p>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>
