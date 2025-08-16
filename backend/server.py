@@ -945,6 +945,116 @@ async def delete_property_admin(property_id: str, current_user = Depends(verify_
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/google/places/autocomplete")
+async def google_places_autocomplete(query: str, current_user = Depends(verify_token)):
+    """Mock Google Places Autocomplete for location selection"""
+    if not query or len(query.strip()) < 2:
+        return {"predictions": []}
+    
+    # Mock popular locations in Gurugram and Delhi
+    mock_locations = [
+        {
+            "place_id": "mock_place_1",
+            "description": "Sector 102, Gurugram, Haryana, India",
+            "structured_formatting": {
+                "main_text": "Sector 102",
+                "secondary_text": "Gurugram, Haryana, India"
+            }
+        },
+        {
+            "place_id": "mock_place_2", 
+            "description": "DLF Phase 1, Gurugram, Haryana, India",
+            "structured_formatting": {
+                "main_text": "DLF Phase 1",
+                "secondary_text": "Gurugram, Haryana, India"
+            }
+        },
+        {
+            "place_id": "mock_place_3",
+            "description": "Cyber City, Gurugram, Haryana, India",
+            "structured_formatting": {
+                "main_text": "Cyber City", 
+                "secondary_text": "Gurugram, Haryana, India"
+            }
+        },
+        {
+            "place_id": "mock_place_4",
+            "description": "Connaught Place, New Delhi, Delhi, India",
+            "structured_formatting": {
+                "main_text": "Connaught Place",
+                "secondary_text": "New Delhi, Delhi, India"
+            }
+        },
+        {
+            "place_id": "mock_place_5",
+            "description": "Rajouri Garden, New Delhi, Delhi, India", 
+            "structured_formatting": {
+                "main_text": "Rajouri Garden",
+                "secondary_text": "New Delhi, Delhi, India"
+            }
+        }
+    ]
+    
+    # Filter based on query
+    query_lower = query.lower()
+    filtered_locations = [
+        loc for loc in mock_locations 
+        if query_lower in loc["description"].lower() or query_lower in loc["structured_formatting"]["main_text"].lower()
+    ]
+    
+    return {"predictions": filtered_locations[:5]}
+
+@app.get("/api/google/places/details")
+async def google_place_details(place_id: str, current_user = Depends(verify_token)):
+    """Mock Google Place Details API"""
+    mock_place_details = {
+        "mock_place_1": {
+            "place_id": "mock_place_1",
+            "formatted_address": "Sector 102, Gurugram, Haryana 122006, India",
+            "geometry": {
+                "location": {"lat": 28.4354, "lng": 77.0428}
+            },
+            "name": "Sector 102"
+        },
+        "mock_place_2": {
+            "place_id": "mock_place_2",
+            "formatted_address": "DLF Phase 1, Gurugram, Haryana 122002, India", 
+            "geometry": {
+                "location": {"lat": 28.4744, "lng": 77.0909}
+            },
+            "name": "DLF Phase 1"
+        },
+        "mock_place_3": {
+            "place_id": "mock_place_3",
+            "formatted_address": "Cyber City, Gurugram, Haryana 122002, India",
+            "geometry": {
+                "location": {"lat": 28.4948, "lng": 77.0869}
+            },
+            "name": "Cyber City"
+        },
+        "mock_place_4": {
+            "place_id": "mock_place_4",
+            "formatted_address": "Connaught Place, New Delhi, Delhi 110001, India",
+            "geometry": {
+                "location": {"lat": 28.6289, "lng": 77.2065}
+            },
+            "name": "Connaught Place"
+        },
+        "mock_place_5": {
+            "place_id": "mock_place_5",
+            "formatted_address": "Rajouri Garden, New Delhi, Delhi 110027, India",
+            "geometry": {
+                "location": {"lat": 28.6463, "lng": 77.1189}
+            },
+            "name": "Rajouri Garden"
+        }
+    }
+    
+    if place_id not in mock_place_details:
+        raise HTTPException(status_code=404, detail="Place not found")
+    
+    return {"result": mock_place_details[place_id]}
+
 @app.get("/api/admin/system-stats")
 async def get_system_stats(current_user = Depends(verify_token)):
     """Get comprehensive system statistics"""
