@@ -1853,63 +1853,118 @@ function App() {
       {/* Property Details Modal */}
       {selectedProperty && (
         <Dialog open={!!selectedProperty} onOpenChange={() => setSelectedProperty(null)}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>{selectedProperty.title}</DialogTitle>
-              <DialogDescription>
-                {selectedProperty.location} • ₹{selectedProperty.rent}/month
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <DialogHeader className="flex-1">
+                <DialogTitle className="text-xl font-bold">{selectedProperty.title}</DialogTitle>
+                <DialogDescription className="text-gray-600">
+                  {selectedProperty.location} • ₹{selectedProperty.rent}/month
+                </DialogDescription>
+              </DialogHeader>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedProperty(null)}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-6">
               <div className="h-64 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <Home className="h-24 w-24 text-white opacity-50" />
               </div>
+              
               <div>
-                <h4 className="font-semibold mb-2">Description</h4>
-                <p className="text-gray-700">{selectedProperty.description}</p>
+                <h4 className="font-semibold mb-2 text-gray-900">Description</h4>
+                <p className="text-gray-700 leading-relaxed">{selectedProperty.description}</p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-semibold mb-1">Property Type</h4>
-                  <p className="text-gray-700 capitalize">{selectedProperty.property_type}</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <div>
+                    <h4 className="font-semibold mb-1 text-gray-900">Property Type</h4>
+                    <p className="text-gray-700 capitalize">{selectedProperty.property_type}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-1 text-gray-900">Size</h4>
+                    <p className="text-gray-700">{selectedProperty.bhk} BHK • {selectedProperty.area_size} {selectedProperty.area_unit}</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-semibold mb-1">Size</h4>
-                  <p className="text-gray-700">{selectedProperty.bhk} BHK • {selectedProperty.area_size} {selectedProperty.area_unit}</p>
+                <div className="space-y-3">
+                  <div>
+                    <h4 className="font-semibold mb-1 text-gray-900">Monthly Rent</h4>
+                    <p className="text-2xl font-bold text-green-600">₹{selectedProperty.rent.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-1 text-gray-900">Status</h4>
+                    <Badge variant="default" className="bg-green-100 text-green-800">Available</Badge>
+                  </div>
                 </div>
               </div>
+              
               {selectedProperty.amenities && selectedProperty.amenities.length > 0 && (
                 <div>
-                  <h4 className="font-semibold mb-2">Amenities</h4>
+                  <h4 className="font-semibold mb-3 text-gray-900">Amenities</h4>
                   <div className="flex flex-wrap gap-2">
                     {selectedProperty.amenities.map((amenity, index) => (
-                      <Badge key={index} variant="outline">
+                      <Badge key={index} variant="outline" className="px-3 py-1">
                         {amenity}
                       </Badge>
                     ))}
                   </div>
                 </div>
               )}
+              
               <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-semibold mb-2">Location Details</h4>
-                <p className="text-gray-700 mb-2">{selectedProperty.location}</p>
+                <h4 className="font-semibold mb-3 text-gray-900">Location Details</h4>
+                <p className="text-gray-700 mb-3">{selectedProperty.location}</p>
                 <div className="bg-gray-200 h-32 rounded flex items-center justify-center">
                   <MapPin className="h-8 w-8 text-gray-400" />
                   <span className="ml-2 text-gray-500">Map View (Mock)</span>
                 </div>
               </div>
-              {currentUser.user_type === 'tenant' && (
-                <Button 
-                  className="w-full" 
-                  onClick={() => {
-                    handleExpressInterest(selectedProperty.property_id);
-                    setSelectedProperty(null);
-                  }}
-                  disabled={loading}
+              
+              {/* Action Buttons */}
+              <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedProperty(null)}
+                  className="flex-1"
                 >
-                  Express Interest in This Property
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Properties
                 </Button>
-              )}
+                
+                {currentUser.user_type === 'tenant' && (
+                  <Button 
+                    className="flex-1" 
+                    onClick={() => {
+                      handleExpressInterest(selectedProperty.property_id);
+                      setSelectedProperty(null);
+                    }}
+                    disabled={loading}
+                  >
+                    {loading ? 'Processing...' : 'Express Interest'}
+                  </Button>
+                )}
+                
+                {currentUser.user_type === 'admin' && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      handleDeleteProperty(selectedProperty.property_id, selectedProperty.title);
+                      setSelectedProperty(null);
+                    }}
+                    disabled={loading}
+                    className="flex-1"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {loading ? 'Deleting...' : 'Delete Property'}
+                  </Button>
+                )}
+              </div>
             </div>
           </DialogContent>
         </Dialog>
