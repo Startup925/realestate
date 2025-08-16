@@ -89,11 +89,19 @@ function App() {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      fetchUserProfile();
+    if (currentUser) {
+      fetchDashboardStats();
+      if (activeTab === 'properties') {
+        fetchProperties();
+      } else if (activeTab === 'interests') {
+        fetchInterests();
+      } else if (activeTab === 'users' && currentUser.user_type === 'admin') {
+        fetchAllUsers();
+        fetchSystemStats();
+        fetchRecentActivity();
+      }
     }
-  }, []);
+  }, [currentUser, activeTab]);
 
   useEffect(() => {
     if (successMessage) {
