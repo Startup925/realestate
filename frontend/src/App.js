@@ -104,6 +104,13 @@ function App() {
   }, [currentUser, activeTab]);
 
   useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      fetchUserProfile();
+    }
+  }, []);
+
+  useEffect(() => {
     if (successMessage) {
       const timer = setTimeout(() => {
         setSuccessMessage('');
