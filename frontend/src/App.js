@@ -883,10 +883,30 @@ function App() {
   );
 
   const tabConfig = {
-    tenant: ['dashboard', 'profile', 'properties', 'kyc', 'interests'],
-    owner: ['dashboard', 'profile', 'properties', 'interests'],
-    dealer: ['dashboard', 'profile', 'properties', 'interests'],
-    admin: ['dashboard', 'users', 'properties']
+    tenant: [
+      { value: 'dashboard', label: 'Dashboard' },
+      { value: 'profile', label: 'Profile' },
+      { value: 'properties', label: 'Properties' },
+      { value: 'kyc', label: 'KYC Verification' },
+      { value: 'interests', label: 'My Interests' }
+    ],
+    owner: [
+      { value: 'dashboard', label: 'Dashboard' },
+      { value: 'profile', label: 'Profile' },
+      { value: 'properties', label: 'Properties' },
+      { value: 'interests', label: 'Interest Requests' }
+    ],
+    dealer: [
+      { value: 'dashboard', label: 'Dashboard' },
+      { value: 'profile', label: 'Profile' },
+      { value: 'properties', label: 'Properties' },
+      { value: 'interests', label: 'Interest Requests' }
+    ],
+    admin: [
+      { value: 'dashboard', label: 'Dashboard' },
+      { value: 'users', label: 'All Users' },
+      { value: 'properties', label: 'Properties' }
+    ]
   };
 
   const currentTabs = tabConfig[currentUser?.user_type] || [];
