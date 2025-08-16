@@ -208,6 +208,8 @@ function App() {
   const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage('');
+    setSuccessMessage('');
     
     try {
       let endpoint, payload;
@@ -236,8 +238,10 @@ function App() {
       localStorage.setItem('auth_token', data.token);
       setCurrentUser(data.user);
       setAuthData({ email: '', phone: '', password: '', user_type: 'tenant', full_name: '' });
+      setSuccessMessage(authMode === 'login' ? 'Login successful!' : 'Registration successful!');
     } catch (error) {
-      alert('Authentication failed: ' + error.message);
+      console.error('Authentication error:', error);
+      setErrorMessage(error.message || 'Authentication failed. Please try again.');
     } finally {
       setLoading(false);
     }
