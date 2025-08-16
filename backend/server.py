@@ -847,7 +847,10 @@ async def get_dashboard_stats(current_user = Depends(verify_token)):
 
 @app.get("/api/admin/users")
 async def get_all_users(current_user = Depends(verify_token)):
-    """Get all users in the system (for admin/demo purposes)"""
+    """Get all users in the system (admin only)"""
+    if current_user["user_type"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
     try:
         users = list(db.users.find({}, {
             "_id": 0,
@@ -857,6 +860,7 @@ async def get_all_users(current_user = Depends(verify_token)):
         # Add summary statistics
         user_stats = {
             "total_users": len(users),
+            "admins": len([u for u in users if u["user_type"] == "admin"]),
             "owners": len([u for u in users if u["user_type"] == "owner"]),
             "dealers": len([u for u in users if u["user_type"] == "dealer"]), 
             "tenants": len([u for u in users if u["user_type"] == "tenant"]),
@@ -868,6 +872,76 @@ async def get_all_users(current_user = Depends(verify_token)):
             "users": users,
             "statistics": user_stats
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/admin/users/{user_id}")
+async def delete_user(user_id: str, current_user = Depends(verify_token)):
+    """Delete a user (admin only)"""
+    if current_user["user_type"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Prevent admin from deleting themselves
+    if user_id == current_user["user_id"]:
+        raise HTTPException(status_code=400, detail="Cannot delete your own admin account")
+    
+    try:
+        user = db.users.find_one({"user_id": user_id})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Delete user and related data
+        db.users.delete_one({"user_id": user_id})
+        db.properties.delete_many({"owner_id": user_id})
+        db.property_interests.delete_many({"$or": [{"tenant_id": user_id}, {"owner_id": user_id}]})
+        
+        return {"message": f"User {user['full_name']} deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/admin/properties")
+async def get_all_properties_admin(current_user = Depends(verify_token)):
+    """Get all properties (admin only)"""
+    if current_user["user_type"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        properties = list(db.properties.find({}, {"_id": 0}).sort("created_at", -1))
+        
+        # Add owner information to each property
+        for property_doc in properties:
+            owner = db.users.find_one({"user_id": property_doc["owner_id"]}, {"_id": 0, "password": 0})
+            if owner:
+                property_doc["owner_info"] = {
+                    "name": owner["full_name"],
+                    "email": owner["email"],
+                    "user_type": owner["user_type"]
+                }
+        
+        return {"properties": properties}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/admin/properties/{property_id}")
+async def delete_property_admin(property_id: str, current_user = Depends(verify_token)):
+    """Delete a property (admin only)"""
+    if current_user["user_type"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        property_doc = db.properties.find_one({"property_id": property_id})
+        if not property_doc:
+            raise HTTPException(status_code=404, detail="Property not found")
+        
+        # Delete property and related interests
+        db.properties.delete_one({"property_id": property_id})
+        db.property_interests.delete_many({"property_id": property_id})
+        
+        return {"message": f"Property '{property_doc['title']}' deleted successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
