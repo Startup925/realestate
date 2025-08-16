@@ -78,8 +78,24 @@ def seed_sample_data():
         db.properties.delete_many({})
         db.property_interests.delete_many({})
         
-        # Sample users for each persona
+        # Sample users for each persona (including admin)
         sample_users = [
+            {
+                "user_id": str(uuid.uuid4()),
+                "email": "admin@realestate.com",
+                "phone": "+91-9999999999",
+                "password": hash_password("admin123"),
+                "user_type": "admin",
+                "full_name": "Platform Administrator",
+                "profile_completed": True,
+                "kyc_completed": True,
+                "profile": {
+                    "full_name": "Platform Administrator",
+                    "phone": "+91-9999999999",
+                    "address": "Admin Office, Cyber City, Gurugram"
+                },
+                "created_at": datetime.now().isoformat()
+            },
             {
                 "user_id": str(uuid.uuid4()),
                 "email": "john.owner@realestate.com",
@@ -92,7 +108,7 @@ def seed_sample_data():
                 "profile": {
                     "full_name": "John Property Owner",
                     "phone": "+91-9876543201",
-                    "address": "123 Owner Street, Mumbai, Maharashtra"
+                    "address": "123 Owner Street, Gurugram, Haryana"
                 },
                 "created_at": datetime.now().isoformat()
             },
@@ -108,8 +124,8 @@ def seed_sample_data():
                 "profile": {
                     "full_name": "Sarah Real Estate Dealer",
                     "phone": "+91-9876543202",
-                    "office_address": "456 Business Plaza, Pune, Maharashtra",
-                    "areas_served": ["Mumbai", "Pune", "Thane", "Navi Mumbai"]
+                    "office_address": "456 Business Plaza, DLF Phase 1, Gurugram",
+                    "areas_served": ["Gurugram", "Delhi", "Noida", "Faridabad"]
                 },
                 "created_at": datetime.now().isoformat()
             },
@@ -125,8 +141,10 @@ def seed_sample_data():
                 "profile": {
                     "full_name": "Alex Tenant User",
                     "phone": "+91-9876543203",
-                    "current_address": "789 Tenant Colony, Delhi",
-                    "permanent_address": "321 Home Town, Rajasthan"
+                    "current_address": "789 Tenant Colony, Sector 45, Gurugram",
+                    "permanent_address": "321 Home Town, Delhi",
+                    "employment_type": "salaried",
+                    "monthly_income": "75000-100000"
                 },
                 "kyc_results": {
                     "aadhaar_verification": {"status": "verified", "name": "Alex Tenant User"},
@@ -148,8 +166,10 @@ def seed_sample_data():
                 "profile": {
                     "full_name": "Priya Tenant",
                     "phone": "+91-9876543204",
-                    "current_address": "101 Tech Park, Bangalore",
-                    "permanent_address": "567 Village Road, Kerala"
+                    "current_address": "101 Tech Park, Sector 62, Gurugram",
+                    "permanent_address": "567 Village Road, Delhi",
+                    "employment_type": "self_employed",
+                    "monthly_income": "30000-75000"
                 },
                 "created_at": datetime.now().isoformat()
             }
