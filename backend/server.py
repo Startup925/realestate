@@ -289,14 +289,19 @@ class UserProfile(BaseModel):
     office_address: Optional[str] = None  # For dealers
     current_address: Optional[str] = None  # For tenants
     permanent_address: Optional[str] = None  # For tenants
+    employment_type: Optional[str] = None  # For tenants: salaried, self_employed
+    monthly_income: Optional[str] = None  # For tenants: income range
 
 class Property(BaseModel):
     title: str
     description: str
     property_type: str  # apartment, house, commercial
-    size: str
+    bhk: Optional[str] = None  # 1, 2, 3, 4, 5, 6 BHK
+    area_size: Optional[str] = None  # Numeric value
+    area_unit: Optional[str] = None  # sqft, sqyard
     rent: float
     location: str
+    google_location: Optional[Dict[str, Any]] = None  # Mock Google location data
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     amenities: List[str] = []
@@ -306,9 +311,12 @@ class PropertyUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     property_type: Optional[str] = None
-    size: Optional[str] = None
+    bhk: Optional[str] = None
+    area_size: Optional[str] = None
+    area_unit: Optional[str] = None
     rent: Optional[float] = None
     location: Optional[str] = None
+    google_location: Optional[Dict[str, Any]] = None
     amenities: Optional[List[str]] = None
     images: Optional[str] = None
 
