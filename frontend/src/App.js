@@ -96,19 +96,13 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (currentUser) {
-      fetchDashboardStats();
-      if (activeTab === 'properties') {
-        fetchProperties();
-      } else if (activeTab === 'interests') {
-        fetchInterests();
-      } else if (activeTab === 'users' && currentUser.user_type === 'admin') {
-        fetchAllUsers();
-        fetchSystemStats();
-        fetchRecentActivity();
-      }
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+      return () => clearTimeout(timer);
     }
-  }, [currentUser, activeTab]);
+  }, [successMessage]);
 
   const apiCall = async (url, options = {}) => {
     const token = localStorage.getItem('auth_token');
