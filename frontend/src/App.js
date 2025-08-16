@@ -27,6 +27,8 @@ function App() {
   const [allUsers, setAllUsers] = useState([]);
   const [systemStats, setSystemStats] = useState({});
   const [recentActivity, setRecentActivity] = useState({});
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Auth forms state
   const [authData, setAuthData] = useState({
@@ -37,7 +39,7 @@ function App() {
     full_name: ''
   });
 
-  // Profile form state
+  // Enhanced Profile form state
   const [profileData, setProfileData] = useState({
     full_name: '',
     phone: '',
@@ -45,17 +47,22 @@ function App() {
     areas_served: [],
     office_address: '',
     current_address: '',
-    permanent_address: ''
+    permanent_address: '',
+    employment_type: '',
+    monthly_income: ''
   });
 
-  // Property form state
+  // Enhanced Property form state
   const [propertyData, setPropertyData] = useState({
     title: '',
     description: '',
     property_type: 'apartment',
-    size: '',
+    bhk: '1',
+    area_size: '',
+    area_unit: 'sqft',
     rent: '',
     location: '',
+    google_location: null,
     amenities: [],
     images: []
   });
