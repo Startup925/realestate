@@ -617,7 +617,7 @@ async def create_property(property_data: Property, current_user = Depends(verify
     if current_user["user_type"] not in ["owner", "dealer"]:
         raise HTTPException(status_code=403, detail="Only owners and dealers can create properties")
     
-    # Mock geocoding
+    # Mock geocoding with enhanced location data
     coordinates = mock_geocode(property_data.location)
     
     property_id = str(uuid.uuid4())
@@ -627,9 +627,16 @@ async def create_property(property_data: Property, current_user = Depends(verify
         "title": property_data.title,
         "description": property_data.description,
         "property_type": property_data.property_type,
-        "size": property_data.size,
+        "bhk": property_data.bhk,
+        "area_size": property_data.area_size,
+        "area_unit": property_data.area_unit,
         "rent": property_data.rent,
         "location": property_data.location,
+        "google_location": property_data.google_location or {
+            "place_id": f"mock_place_{property_id[:8]}",
+            "formatted_address": property_data.location,
+            "geometry": {"lat": coordinates["lat"], "lng": coordinates["lng"]}
+        },
         "latitude": coordinates["lat"],
         "longitude": coordinates["lng"],
         "amenities": property_data.amenities,
