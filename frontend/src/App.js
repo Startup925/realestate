@@ -933,15 +933,12 @@ function App() {
 
       <div className="container mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className={`grid w-full grid-cols-${currentTabs.length}`}>
-            {currentTabs.includes('dashboard') && <TabsTrigger value="dashboard">Dashboard</TabsTrigger>}
-            {currentTabs.includes('profile') && <TabsTrigger value="profile">Profile</TabsTrigger>}
-            {currentTabs.includes('properties') && <TabsTrigger value="properties">Properties</TabsTrigger>}
-            {currentTabs.includes('kyc') && <TabsTrigger value="kyc">KYC Verification</TabsTrigger>}
-            {currentTabs.includes('interests') && <TabsTrigger value="interests">
-              {currentUser.user_type === 'tenant' ? 'My Interests' : 'Interest Requests'}
-            </TabsTrigger>}
-            {currentTabs.includes('users') && <TabsTrigger value="users">All Users</TabsTrigger>}
+          <TabsList className="grid w-full grid-cols-5 mb-6">
+            {currentTabs.map((tab) => (
+              <TabsTrigger key={tab.value} value={tab.value}>
+                {tab.label}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value="dashboard" className="mt-6">
