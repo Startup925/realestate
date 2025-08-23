@@ -787,6 +787,16 @@ async def express_interest(property_id: str, interest_data: PropertyInterest, cu
     if not property_doc:
         raise HTTPException(status_code=404, detail="Property not found")
     
+    # Check if interest already exists for this property and tenant
+    existing_interest = db.property_interests.find_one({
+        "property_id": property_id,
+        "tenant_id": current_user["user_id"],
+        "status": {"$ne": "rejected"}  # Allow re-expressing interest only if previously rejected
+    })
+    
+    if existing_interest:
+        raise HTTPException(status_code=400, detail="You have already expressed interest in this property")
+    
     # Create interest record
     interest_id = str(uuid.uuid4())
     interest_doc = {
@@ -796,6 +806,15 @@ async def express_interest(property_id: str, interest_data: PropertyInterest, cu
         "owner_id": property_doc["owner_id"],
         "message": interest_data.message,
         "status": "pending",
+        "tenant_profile": {
+            "full_name": current_user["full_name"],
+            "email": current_user["email"],
+            "phone": current_user.get("profile", {}).get("phone", ""),
+            "current_address": current_user.get("profile", {}).get("current_address", ""),
+            "employment_type": current_user.get("profile", {}).get("employment_type", ""),
+            "monthly_income": current_user.get("profile", {}).get("monthly_income", ""),
+            "kyc_completed": current_user.get("kyc_completed", False)
+        },
         "created_at": datetime.now().isoformat()
     }
     
