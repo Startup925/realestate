@@ -149,8 +149,7 @@ def seed_sample_data():
                 "kyc_results": {
                     "aadhaar_verification": {"status": "verified", "name": "Alex Tenant User"},
                     "pan_verification": {"status": "verified", "name": "Alex Tenant User"},
-                    "face_match": {"status": "match", "match_score": 95.5},
-                    "employer_verification": {"company_found": True, "company_name": "Infosys Limited"}
+                    "face_match": {"status": "match", "match_score": 95.5}
                 },
                 "created_at": datetime.now().isoformat()
             },
