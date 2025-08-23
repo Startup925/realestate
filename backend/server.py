@@ -751,11 +751,7 @@ async def verify_kyc(kyc_data: KYCDocuments, current_user = Depends(verify_token
         "digilocker_docs": mock_digilocker_fetch_docs(kyc_data.aadhaar_number)
     }
     
-    # Mock employer verification if provided
-    if kyc_data.employer_name:
-        verification_results["employer_verification"] = mock_mca_employer_verify(kyc_data.employer_name)
-    
-    # Update user KYC status
+    # KYC status determination
     kyc_status = all([
         verification_results["aadhaar_verification"]["status"] == "verified",
         verification_results["pan_verification"]["status"] == "verified",
