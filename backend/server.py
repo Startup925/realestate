@@ -862,7 +862,46 @@ async def respond_to_interest(interest_id: str, current_user = Depends(verify_to
     
     return {"message": "Interest rejected successfully"}
 
-@app.get("/api/dashboard/stats")
+@app.put("/api/properties/{property_id}/status")
+async def update_property_status(property_id: str, status_data: PropertyStatusUpdate, current_user = Depends(verify_token)):
+    if current_user["user_type"] not in ["owner", "dealer"]:
+        raise HTTPException(status_code=403, detail="Only owners and dealers can update property status")
+    
+    property_doc = db.properties.find_one({"property_id": property_id})
+    if not property_doc:
+        raise HTTPException(status_code=404, detail="Property not found")
+    
+    if property_doc["owner_id"] != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Not authorized to update this property")
+    
+    db.properties.update_one(
+        {"property_id": property_id},
+        {
+            "$set": {
+                "status": status_data.status,
+                "updated_at": datetime.now().isoformat()
+            }
+        }
+    )
+    
+    return {"message": f"Property status updated to {status_data.status}"}
+
+@app.get("/api/properties/user/check-interest/{property_id}")
+async def check_user_interest(property_id: str, current_user = Depends(verify_token)):
+    """Check if current user has already expressed interest in a property"""
+    if current_user["user_type"] != "tenant":
+        return {"has_interest": False}
+    
+    existing_interest = db.property_interests.find_one({
+        "property_id": property_id,
+        "tenant_id": current_user["user_id"],
+        "status": {"$ne": "rejected"}
+    })
+    
+    return {
+        "has_interest": bool(existing_interest),
+        "interest_status": existing_interest.get("status") if existing_interest else None
+    }
 async def get_dashboard_stats(current_user = Depends(verify_token)):
     user_type = current_user["user_type"]
     stats = {}
