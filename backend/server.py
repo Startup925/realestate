@@ -351,6 +351,20 @@ class UserRegistration(BaseModel):
     password: str
     user_type: str  # owner, dealer, tenant
     full_name: str
+    
+    @validator('phone')
+    def validate_phone(cls, v):
+        # Remove any non-numeric characters for validation
+        numeric_phone = ''.join(filter(str.isdigit, v))
+        if len(numeric_phone) < 10 or len(numeric_phone) > 12:
+            raise ValueError('Phone number must be between 10-12 digits')
+        return v
+    
+    @validator('full_name')
+    def validate_full_name(cls, v):
+        if len(v) > 40:
+            raise ValueError('Full name must be maximum 40 characters')
+        return v.strip()
 
 class UserProfile(BaseModel):
     full_name: str
@@ -362,6 +376,20 @@ class UserProfile(BaseModel):
     permanent_address: Optional[str] = None  # For tenants
     employment_type: Optional[str] = None  # For tenants: salaried, self_employed
     monthly_income: Optional[str] = None  # For tenants: income range
+    
+    @validator('phone')
+    def validate_phone(cls, v):
+        # Remove any non-numeric characters for validation
+        numeric_phone = ''.join(filter(str.isdigit, v))
+        if len(numeric_phone) < 10 or len(numeric_phone) > 12:
+            raise ValueError('Phone number must be between 10-12 digits')
+        return v
+    
+    @validator('full_name')
+    def validate_full_name(cls, v):
+        if len(v) > 40:
+            raise ValueError('Full name must be maximum 40 characters')
+        return v.strip()
 
 class Property(BaseModel):
     title: str
