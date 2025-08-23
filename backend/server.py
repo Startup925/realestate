@@ -837,7 +837,7 @@ async def get_interests(current_user = Depends(verify_token)):
     return {"interests": interests}
 
 @app.put("/api/interests/{interest_id}/respond")
-async def respond_to_interest(interest_id: str, response: str, current_user = Depends(verify_token)):
+async def respond_to_interest(interest_id: str, current_user = Depends(verify_token)):
     if current_user["user_type"] not in ["owner", "dealer"]:
         raise HTTPException(status_code=403, detail="Only owners and dealers can respond to interests")
     
@@ -848,18 +848,19 @@ async def respond_to_interest(interest_id: str, response: str, current_user = De
     if interest_doc["owner_id"] != current_user["user_id"]:
         raise HTTPException(status_code=403, detail="Not authorized to respond to this interest")
     
+    # Only allow rejection - remove the interest
     db.property_interests.update_one(
         {"interest_id": interest_id},
         {
             "$set": {
-                "status": response,  # approved, rejected
+                "status": "rejected",
                 "responded_at": datetime.now().isoformat(),
                 "responded_by": current_user["user_id"]
             }
         }
     )
     
-    return {"message": f"Interest {response} successfully"}
+    return {"message": "Interest rejected successfully"}
 
 @app.get("/api/dashboard/stats")
 async def get_dashboard_stats(current_user = Depends(verify_token)):
