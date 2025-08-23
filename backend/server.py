@@ -423,7 +423,6 @@ class KYCDocuments(BaseModel):
     aadhaar_number: str
     pan_number: str
     selfie_image: str  # base64 encoded
-    employer_name: Optional[str] = None
 
 class PropertyInterest(BaseModel):
     property_id: str
@@ -434,6 +433,9 @@ class DealApplication(BaseModel):
     tenant_id: str
     message: str
     monthly_rent: float
+
+class PropertyStatusUpdate(BaseModel):
+    status: str  # active, inactive
 
 # Mock services
 def mock_geocode(address: str) -> Dict[str, float]:
