@@ -5,7 +5,7 @@ from datetime import datetime
 import uuid
 
 class RealEstatePlatformTester:
-    def __init__(self, base_url="https://cc953fed-5032-4e42-9944-9f59ff5f3380.preview.emergentagent.com"):
+    def __init__(self, base_url="https://estately-hub.preview.emergentagent.com"):
         self.base_url = base_url
         self.tokens = {}  # Store tokens for different user types
         self.users = {}   # Store user data
