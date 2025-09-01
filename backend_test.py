@@ -106,25 +106,54 @@ class RealEstatePlatformTester:
         return False
 
     def test_user_login(self, user_type):
-        """Test user login"""
-        if user_type not in self.users:
-            print(f"❌ No user data for {user_type}")
+        """Test user login with form-encoded data"""
+        if user_type in self.test_credentials:
+            email = self.test_credentials[user_type]['email']
+            password = self.test_credentials[user_type]['password']
+        elif user_type in self.users:
+            email = self.users[user_type]['data']['email']
+            password = self.users[user_type]['data']['password']
+        else:
+            print(f"❌ No credentials for {user_type}")
             return False
+        
+        # Test login with form-encoded data
+        url = f"{self.base_url}/api/auth/login"
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        data = f"email={email}&password={password}"
+        
+        self.tests_run += 1
+        print(f"\n🔍 Testing Login {user_type.title()} (Form-encoded)...")
+        
+        try:
+            response = requests.post(url, data=data, headers=headers)
+            success = response.status_code == 200
             
-        email = self.users[user_type]['data']['email']
-        password = self.users[user_type]['data']['password']
-        
-        success, response = self.run_test(
-            f"Login {user_type.title()}",
-            "POST",
-            f"/api/auth/login?email={email}&password={password}",
-            200
-        )
-        
-        if success and 'token' in response:
-            self.tokens[user_type] = response['token']
-            return True
-        return False
+            if success:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                response_data = response.json()
+                if 'token' in response_data:
+                    self.tokens[user_type] = response_data['token']
+                    self.users[user_type] = {'response': response_data['user']}
+                    print(f"   Token received: {response_data['token'][:20]}...")
+                    print(f"   User data: {response_data['user']['full_name']} ({response_data['user']['user_type']})")
+                    return True
+                else:
+                    print(f"❌ No token in response")
+                    return False
+            else:
+                print(f"❌ Failed - Expected 200, got {response.status_code}")
+                try:
+                    error_detail = response.json()
+                    print(f"   Error: {error_detail}")
+                except:
+                    print(f"   Error: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False
 
     def test_get_user_profile(self, user_type):
         """Test getting user profile"""
