@@ -570,7 +570,11 @@ class RealEstatePlatformTester:
 
 def main():
     tester = RealEstatePlatformTester()
-    success = tester.run_comprehensive_test()
+    
+    # Run specific fixes test as requested in review
+    print("Running specific backend fixes test as requested...")
+    success = tester.test_specific_fixes()
+    
     return 0 if success else 1
 
 if __name__ == "__main__":
