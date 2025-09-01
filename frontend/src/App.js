@@ -127,8 +127,8 @@ function App() {
     };
     
     const headers = {
-      ...options.headers,
-      ...defaultHeaders
+      ...defaultHeaders,
+      ...options.headers
     };
 
     const response = await fetch(`${BACKEND_URL}${url}`, {
