@@ -121,9 +121,13 @@ function App() {
 
   const apiCall = async (url, options = {}) => {
     const token = localStorage.getItem('auth_token');
-    const headers = {
+    const defaultHeaders = {
       'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    };
+    
+    const headers = {
+      ...defaultHeaders,
       ...options.headers
     };
 
