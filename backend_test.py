@@ -446,7 +446,63 @@ class RealEstatePlatformTester:
             print(f"❌ Failed - Error: {str(e)}")
             return False
 
-    def run_comprehensive_test(self):
+    def test_specific_fixes(self):
+        """Test the specific backend fixes mentioned in review request"""
+        print("🚀 Testing Specific Backend Fixes")
+        print("=" * 60)
+        
+        # Test health check first
+        if not self.test_health_check():
+            print("❌ Health check failed, stopping tests")
+            return False
+        
+        # Priority 1: Test login functionality with form-encoded data
+        print("\n🔐 Priority 1: Testing Login API with Form-encoded Data")
+        login_success = True
+        for user_type in ["tenant", "owner"]:
+            if not self.test_user_login(user_type):
+                print(f"❌ Login failed for {user_type}")
+                login_success = False
+        
+        if not login_success:
+            print("❌ Login tests failed, cannot proceed with authenticated endpoints")
+            return False
+        
+        # Priority 2: Test dashboard stats endpoint
+        print("\n📊 Priority 2: Testing Dashboard Stats Endpoint")
+        dashboard_success = True
+        for user_type in ["tenant", "owner"]:
+            if not self.test_dashboard_stats(user_type):
+                print(f"❌ Dashboard stats failed for {user_type}")
+                dashboard_success = False
+        
+        # Priority 3: Test express interest functionality
+        print("\n💝 Priority 3: Testing Express Interest API")
+        interest_success = self.test_express_interest("tenant")
+        
+        # Print final results
+        print("\n" + "=" * 60)
+        print(f"📊 Test Results: {self.tests_passed}/{self.tests_run} tests passed")
+        
+        results = {
+            "login": login_success,
+            "dashboard_stats": dashboard_success, 
+            "express_interest": interest_success
+        }
+        
+        print("\n🔍 Detailed Results:")
+        for test_name, success in results.items():
+            status = "✅ PASS" if success else "❌ FAIL"
+            print(f"   {test_name}: {status}")
+        
+        overall_success = all(results.values())
+        if overall_success:
+            print("\n🎉 All specific fixes are working correctly!")
+        else:
+            failed_tests = [name for name, success in results.items() if not success]
+            print(f"\n⚠️  Failed tests: {', '.join(failed_tests)}")
+        
+        return overall_success
         """Run comprehensive test suite for all personas"""
         print("🚀 Starting Comprehensive Real Estate Platform API Testing")
         print("=" * 60)
