@@ -358,15 +358,49 @@ class RealEstatePlatformTester:
         return success
 
     def test_dashboard_stats(self, user_type):
-        """Test getting dashboard statistics"""
-        success, response = self.run_test(
-            f"Get Dashboard Stats ({user_type.title()})",
-            "GET",
-            "/api/dashboard/stats",
-            200,
-            user_type=user_type
-        )
-        return success
+        """Test getting dashboard statistics with proper authentication"""
+        if user_type not in self.tokens:
+            print(f"❌ No token available for {user_type}")
+            return False
+            
+        url = f"{self.base_url}/api/dashboard/stats"
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.tokens[user_type]}'
+        }
+        
+        self.tests_run += 1
+        print(f"\n🔍 Testing Dashboard Stats ({user_type.title()})...")
+        
+        try:
+            response = requests.get(url, headers=headers)
+            success = response.status_code == 200
+            
+            if success:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                response_data = response.json()
+                if 'stats' in response_data:
+                    stats = response_data['stats']
+                    print(f"   Stats received for {user_type}:")
+                    for key, value in stats.items():
+                        print(f"     {key}: {value}")
+                    return True
+                else:
+                    print(f"❌ No stats in response")
+                    return False
+            else:
+                print(f"❌ Failed - Expected 200, got {response.status_code}")
+                try:
+                    error_detail = response.json()
+                    print(f"   Error: {error_detail}")
+                except:
+                    print(f"   Error: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False
 
     def run_comprehensive_test(self):
         """Run comprehensive test suite for all personas"""
