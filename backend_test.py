@@ -503,7 +503,8 @@ class RealEstatePlatformTester:
             print(f"\n⚠️  Failed tests: {', '.join(failed_tests)}")
         
         return overall_success
-        """Run comprehensive test suite for all personas"""
+
+    def run_comprehensive_test(self):
         print("🚀 Starting Comprehensive Real Estate Platform API Testing")
         print("=" * 60)
         
