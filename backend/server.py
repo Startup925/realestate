@@ -424,7 +424,6 @@ class KYCDocuments(BaseModel):
     selfie_image: str  # base64 encoded
 
 class PropertyInterest(BaseModel):
-    property_id: str
     message: Optional[str] = None
 
 class DealApplication(BaseModel):
