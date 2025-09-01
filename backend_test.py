@@ -295,35 +295,79 @@ class RealEstatePlatformTester:
         return success
 
     def test_express_interest(self, user_type):
-        """Test expressing interest in property (tenants only)"""
+        """Test expressing interest in property with just message field"""
         if user_type != "tenant":
             print(f"⏭️  Skipping express interest for {user_type}")
             return True
             
-        # Use property created by owner or dealer
-        property_id = self.properties.get("owner") or self.properties.get("dealer")
-        if not property_id:
-            print(f"⏭️  No property available for expressing interest")
-            return True
+        if user_type not in self.tokens:
+            print(f"❌ No token available for {user_type}")
+            return False
             
-        interest_data = {
-            "property_id": property_id,
-            "message": "I am interested in this property. Please contact me."
+        # Get available properties first
+        properties_url = f"{self.base_url}/api/properties"
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.tokens[user_type]}'
         }
         
-        success, response = self.run_test(
-            f"Express Interest ({user_type.title()})",
-            "POST",
-            f"/api/properties/{property_id}/interest",
-            200,
-            data=interest_data,
-            user_type=user_type
-        )
+        try:
+            props_response = requests.get(properties_url, headers=headers)
+            if props_response.status_code != 200:
+                print(f"❌ Failed to get properties: {props_response.status_code}")
+                return False
+                
+            properties_data = props_response.json()
+            if not properties_data.get('properties'):
+                print(f"❌ No properties available for testing")
+                return False
+                
+            property_id = properties_data['properties'][0]['property_id']
+            print(f"   Using property: {property_id}")
+            
+        except Exception as e:
+            print(f"❌ Failed to get properties: {str(e)}")
+            return False
+            
+        # Test express interest with just message field (no property_id in body)
+        url = f"{self.base_url}/api/properties/{property_id}/interest"
+        interest_data = {
+            "message": "I am very interested in this property. Please contact me to discuss further details."
+        }
         
-        if success and 'interest_id' in response:
-            self.interests[user_type] = response['interest_id']
-            return True
-        return False
+        self.tests_run += 1
+        print(f"\n🔍 Testing Express Interest ({user_type.title()})...")
+        print(f"   Property ID: {property_id}")
+        print(f"   Request body: {interest_data}")
+        
+        try:
+            response = requests.post(url, json=interest_data, headers=headers)
+            success = response.status_code == 200
+            
+            if success:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                response_data = response.json()
+                if 'interest_id' in response_data:
+                    self.interests[user_type] = response_data['interest_id']
+                    print(f"   Interest ID: {response_data['interest_id']}")
+                    print(f"   Message: {response_data.get('message', 'Interest expressed successfully')}")
+                    return True
+                else:
+                    print(f"❌ No interest_id in response")
+                    return False
+            else:
+                print(f"❌ Failed - Expected 200, got {response.status_code}")
+                try:
+                    error_detail = response.json()
+                    print(f"   Error: {error_detail}")
+                except:
+                    print(f"   Error: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False
 
     def test_get_interests(self, user_type):
         """Test getting interests"""
