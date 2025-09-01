@@ -196,14 +196,13 @@ frontend:
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 0
+  test_sequence: 1
   run_ui: false
 
 test_plan:
   current_focus:
     - "Camera KYC Functionality"
     - "Express Interest UI"
-    - "Express Interest API"
   stuck_tasks:
     - "Camera KYC Functionality"
     - "Express Interest UI"
@@ -213,3 +212,5 @@ test_plan:
 agent_communication:
   - agent: "main"
     message: "Identified camera and express interest issues reported by user. Camera needs browser native APIs fix. Express interest API might have request body format issues. Starting fixes now."
+  - agent: "testing"
+    message: "Completed testing of 3 specific backend fixes as requested: 1) Login API with form-encoded data - WORKING ✅ 2) Dashboard Stats Endpoint for different user types - WORKING ✅ 3) Express Interest API with just message field - WORKING ✅. All backend APIs are functioning correctly. Backend testing complete with 6/6 tests passed."
