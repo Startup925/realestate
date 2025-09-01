@@ -13,6 +13,12 @@ class RealEstatePlatformTester:
         self.interests = {}   # Store created interests
         self.tests_run = 0
         self.tests_passed = 0
+        
+        # Predefined test credentials
+        self.test_credentials = {
+            "tenant": {"email": "alex.tenant@realestate.com", "password": "password123"},
+            "owner": {"email": "john.owner@realestate.com", "password": "password123"}
+        }
 
     def run_test(self, name, method, endpoint, expected_status, data=None, user_type=None):
         """Run a single API test"""
