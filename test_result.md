@@ -105,17 +105,44 @@
 user_problem_statement: "Fix camera functionality (use browser native APIs) and express interest feature not working correctly. Complete frontend implementation for pending features."
 
 backend:
+  - task: "Login API"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Login API tested successfully with form-encoded data. Both tenant (alex.tenant@realestate.com) and owner (john.owner@realestate.com) credentials work correctly. Returns proper token and user data."
+
+  - task: "Dashboard Stats Endpoint"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Dashboard stats endpoint tested successfully for both tenant and owner user types. Returns appropriate stats based on user type - tenant gets properties_viewed, interests_expressed, applications_pending, kyc_status; owner gets total_properties, active_properties, total_interests, pending_interests."
+
   - task: "Express Interest API"
     implemented: true
-    working: false
+    working: true
     file: "backend/server.py"
     stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: false
         agent: "user"
         comment: "User reported express interest is not working correctly"
+      - working: true
+        agent: "testing"
+        comment: "Express Interest API tested successfully. Endpoint accepts requests with just 'message' field in body (no property_id needed since it's in URL path). Successfully created interest with ID ac3393a6-a064-4d93-a89d-829ceaae8fb2 for tenant on property 52f88028-dc52-45a2-81bf-18ba0d29edee."
 
   - task: "Interest Response API"
     implemented: true
