@@ -900,6 +900,8 @@ async def check_user_interest(property_id: str, current_user = Depends(verify_to
         "has_interest": bool(existing_interest),
         "interest_status": existing_interest.get("status") if existing_interest else None
     }
+
+@app.get("/api/dashboard/stats")
 async def get_dashboard_stats(current_user = Depends(verify_token)):
     user_type = current_user["user_type"]
     stats = {}
