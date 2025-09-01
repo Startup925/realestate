@@ -447,7 +447,7 @@ function App() {
     try {
       await apiCall(`/api/properties/${propertyId}/interest`, {
         method: 'POST',
-        body: JSON.stringify({ property_id: propertyId, message })
+        body: JSON.stringify({ message })
       });
 
       setSuccessMessage('Interest expressed successfully!');
